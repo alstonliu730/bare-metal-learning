@@ -19,4 +19,20 @@ Here are some of the information we can get about the Raspberry Pi 4B's [**BCM27
 - Various integrated peripherals (UART, SPI, I2C, etc.)
 - High-speed interfaces (PCIe, USB 3.0, etc.)
 
+## Setting up
+To setup the cross-compilation for your development machine, refer to this [link](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) to download the right version of the compiler. 
+
+Please make sure you download the `aarch64 elf bare-metal target` version of the compiler. You should also download GNU make.
+
+### Linux/WSL 
+To install it, find the appropriate version for your computer. Afterwards, unzip the file using **tar**. Here's an example of using tar: 
+
+`tar -xzvf [file-name].tar.gz`.
+
+Once you unpack the compiler, you must add it to your `.bashrc` file. This file is automatically *sourced* and its contents are executed when you open a new interactive *bash* shell. This may be different when using a *login* shell. Here's a great [post](https://stackoverflow.com/questions/415403/whats-the-difference-between-bashrc-bash-profile-and-environment) talking about the shell.
+
+### For MacOS (Apple Silicon & Intel)
+I recommend using [Homebrew](https://docs.brew.sh/Installation) to install LLVM. Afterwards you can install it using this command: `brew install llvm`.
+
+LLVM will give you all you need to start building for Raspberry Pi bare metal on Mac. I do not really have experience with Macbook Pro with Apple Silicon but [@babbleberry](https://github.com/babbleberry) does.
 
