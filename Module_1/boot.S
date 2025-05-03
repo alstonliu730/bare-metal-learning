@@ -4,13 +4,13 @@
 
 _start:
     // Check Processor ID is 0 (main core), else hang
-    mrs     x1, mpidr_el1
+    mrs     x1, mpidr_el1       // mpidr_el1 = Multiprocessor ID Register
     and     x1, x1, #3
     cbz     x1, 2f
 
 1:  
     // Not on main core, infinite wait loop
-    wfe
+    wfe                         // wait for event instruction - power efficient
     b       1b
 
 2:  // On main core

@@ -35,4 +35,3 @@ The Raspberry Pi 4B boot process is different since it differs from traditional 
 
     ![General Overview of the Instruction Set Architecture for ARM processors](assets/arm-isa.png)
 
-

@@ -1,0 +1,2 @@
+# Intro to UART
+Universal Asynchronous Receiver/Transmitter is a popular serial communication protocol used for exchanging data between devices, often found in micro-controllers and other electronic components.                                                                                                                       ##                                                                             
