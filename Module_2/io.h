@@ -22,13 +22,13 @@ typedef volatile unsigned int reg32;
 #define AUX_MU_CNTL_REG     (AUX_BASE + 0x60)
 #define AUX_MU_BAUD_REG     (AUX_BASE + 0x68)
 
-#define AUX_UART_CLOCK      500000000
+#define AUX_UART_CLOCK      500000000   // 500MHz
 #define UART_MAX_QUEUE      (16 * 1024)
 
 #define AUX_MU_BAUD(baud) \
     ((AUX_UART_CLOCK / (baud * 8)) - 1)
 
 void uart_init();
-void uart_writeText(const char *text);
+void uart_writeText(char *text);
 
 #endif /* IO_H*/

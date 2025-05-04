@@ -32,3 +32,16 @@ unsiged int mmio_read(long reg) {
 ```
 
 These functions are used to read and write from the memory-mapped io addresses. Please refer to the BCM2711 manual to see the address table on page 5 and page 8.
+
+### Pre-Defined Addresses
+In our functions we will reference many different addresses. It would be better to organize and set the names of the registers we intend to use. In Adam's file, he used an enum to set the values and name for each register. I'm used to using the `#define` macro to set the address of each register. There's seem to be a better way based on this [post](https://stackoverflow.com/questions/3970876/define-vs-enums-for-addressing-peripherals) on stack overflow but to each their own. There may be overhead for different interpretations but this is a small part of the bigger scope. 
+
+We first set the Peripheral Address to `0xFE000000` since this is where the peripheral memory in the memory-mapped io table starts. The GPIO base address would start with an *offset* of `0x200000`. 
+
+![GPIO address in Datasheet](assets/gpio_address.png)
+
+We also set the addresses for the UART buses based on the table in this section of the datasheet.
+
+![UART address in Datasheet](assets/uart_address.png)
+
+
