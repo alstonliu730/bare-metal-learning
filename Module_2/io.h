@@ -1,6 +1,5 @@
 #ifndef IO_H
 #define IO_H
-typedef volatile unsigned int reg32;
 
 #define PERIPHERAL_BASE     0xFE000000
 #define GPFSEL0             (PERIPHERAL_BASE + 0x200000)

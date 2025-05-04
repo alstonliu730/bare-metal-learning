@@ -18,8 +18,8 @@ It uses two-wires to communicate with a "receiver" wire and a "transceiver" wire
 
 ## Connecting the serial cable
 
-## Getting UART going in code
-In order to get UART working, we need to write some functions in order to read the bits at the UART addresses. Here we have defined two functions to read and write the bits at the given address. 
+## Getting mini UART working
+In order to implement UART, we need to write some functions in order to read the bits at the UART addresses. Here we have defined two functions to read and write the bits at the given address. 
 
 ```C
 void mmio_write(long reg, unsigned int val) {
@@ -40,8 +40,62 @@ We first set the Peripheral Address to `0xFE000000` since this is where the peri
 
 ![GPIO address in Datasheet](assets/gpio_address.png)
 
-We also set the addresses for the UART buses based on the table in this section of the datasheet.
+We also set the addresses for the UART buses based on the table in this section of the datasheet. We see that the Auxiliary peripherals start with an offset of `0x215000`. This can include mini UART(UART1) & two SPI masters (SPI1 & SPI2). They share a common interrupt and share the same area in peripheral register map.
 
 ![UART address in Datasheet](assets/uart_address.png)
 
+An example of my implementation on defining the addresses:
 
+```C
+#define PERIPHERAL_BASE     0xFE000000
+#define GPFSEL0             (PERIPHERAL_BASE + 0x200000)
+#define GPSET0              (PERIPHERAL_BASE + 0x20001C)
+#define GPCLR0              (PERIPHERAL_BASE + 0x200028)
+#define GPPUPPDN0           (PERIPHERAL_BASE + 0x2000E4)
+```
+
+**Find `io.h` for more details and implementation.**
+
+### GPIO Functions
+In our code, we create the `gpio_call` to manipulate the value of the register with some value checking. This function is to abstract the complex bit manipulation required to configure GPIO pins to making the other gpio functions easier to implement.
+
+```C
+unsigned int gpio_call(unsigned int pin_number, unsigned int value, unsigned int base, unsigned int field_size, unsigned int field_max) {
+    unsigned int field_mask = (1 << field_size) - 1;
+  
+    if (pin_number > field_max) return 0;
+    if (value > field_mask) return 0; 
+
+    unsigned int num_fields = 32 / field_size;
+    unsigned int reg = base + ((pin_number / num_fields) * 4);
+    unsigned int shift = (pin_number % num_fields) * field_size;
+
+    unsigned int curval = mmio_read(reg);
+    curval &= ~(field_mask << shift);
+    curval |= value << shift;
+    mmio_write(reg, curval);
+
+    return 1;
+}
+```
+**Find `io.c` to see the rest of the GPIO functions defined there.**
+
+### UART functions
+We created two functions for the kernel to call `uart_init()` and `uart_writeText()`. To initialize the UART, we would need to clear the bits of the registers for configuration (essentially resetting the UART). Then we set the functions of the GPIO pins that we connected from the Serial cable. *In Adam's example, he uses pin 14, 15 Alt5 Function.* After we set the functions, we enable the transmitter and receiver:
+
+```C
+void uart_init() {
+    mmio_write(AUX_ENABLES, 1); // Enable UART1
+    mmio_write(AUX_MU_IER_REG, 0); // Disable interrupts
+    mmio_write(AUX_MU_CNTL_REG, 0); // Disable transmitter and receiver
+    mmio_write(AUX_MU_LCR_REG, 3); // Set 8 data bits
+    mmio_write(AUX_MU_MCR_REG, 0); // Disable modem control
+    mmio_write(AUX_MU_IIR_REG, 0xC6); // Disable interrupts
+    mmio_write(AUX_MU_BAUD_REG, AUX_MU_BAUD(115200)); // Set baud rate
+
+    gpio_useAlt5(14); // TXD1
+    gpio_useAlt5(15); // RXD1
+
+    mmio_write(AUX_MU_CNTL_REG, 3); // Enable transmitter and receiver
+}
+```

@@ -78,10 +78,16 @@ void uart_init() {
     mmio_write(AUX_MU_CNTL_REG, 3); // Enable transmitter and receiver
 }
 
+/**
+ * Checks if the UART FIFO buffer is empty.
+ */
 unsigned int uart_ready() {
     return mmio_read(AUX_MU_LSR_REG) & 0x20; // Check if the transmitter is ready
 }
 
+/**
+ * Write a byte to the UART transmitter blockingly.
+ */
 void uart_writeByteBlocking(unsigned char ch) {
     while (!uart_ready());
     mmio_write(AUX_MU_IO_REG, (unsigned int)ch);
@@ -91,10 +97,8 @@ void uart_writeText(char *text) {
     while (*text) {
         if (*text == '\n') {
             uart_writeByteBlocking('\r'); // Send carriage return before line feed
-        } else {
-            uart_writeByteBlocking(*text); // Send character
-        }
-        *text++;
+        } 
+        uart_writeByteBlocking(*text++;); // Send character
     }
 }
 
