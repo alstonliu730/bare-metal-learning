@@ -80,15 +80,14 @@ void uart_init() {
     mmio_write(AUX_MU_CNTL_REG, 3); // Enable transmitter and receiver
 }
 
-/**
- * Checks if the UART FIFO is ready to read data.
+/** * Checks if the UART Register is ready to read data.
  */
 unsigned int uart_readByteReady() {
     return mmio_read(AUX_MU_LSR_REG) & 0x01; // Check if data is available
 }
 
 /**
- * Checks if the UART FIFO is ready to write data.
+ * Checks if the UART Register is ready to write data.
  */
 unsigned int uart_writeByteReady() {
     return mmio_read(AUX_MU_LSR_REG) & 0x20; // Check if the transmitter is ready
@@ -97,7 +96,7 @@ unsigned int uart_writeByteReady() {
 /**
  * Write a byte to the UART transmitter blockingly.
  */
-void uart_writeByteBlocking(unsigned char ch) {
+void uart_writeToMem(unsigned char ch) {
     while (!uart_writeByteReady()); // Wait for the transmitter to be ready
     mmio_write(AUX_MU_IO_REG, (unsigned int)ch); // Write the byte
 }
@@ -105,44 +104,68 @@ void uart_writeByteBlocking(unsigned char ch) {
 /**
  * Read a byte from the UART receiver blockingly.
  */
-void uart_readByteBlocking(unsigned char *ch) {
+void uart_readFromMem(unsigned char *ch) {
     while (!uart_readByteReady()); // Wait for data to be available
     *ch = (unsigned char)mmio_read(AUX_MU_IO_REG); // Read the byte
 }
 
-/**
- * Write a string to the UART (blocking).
- */
-void uart_writeText(char *text) {
-    while (*text) {
-        if (*text == '\n') {
-            uart_writeByteBlocking('\r'); // Send carriage return before line feed
-        } 
-        uart_writeByteBlocking(*text++); // Send character
-    }
-}
-
-// UART FIFO Buffer
-unsigned char uart_output_queue[UART_MAX_QUEUE];
-unsigned int uart_out_queue_write = 0;
-unsigned int uart_out_queue_read = 0;
+// UART FIFO Buffer (Circular Queue)
+unsigned char uart_out[UART_MAX_QUEUE];     // UART output buffer
+unsigned int uart_out_write = 0;            // Write index
+unsigned int uart_out_read = 0;             // Read index
 
 /**
  * Check if the UART output queue is empty.
  */
-unsigned int uart_outputQueueEmpty() {
-    return uart_out_queue_read == uart_out_queue_write;
+unsigned int uart_fifoEmpty() {
+    return uart_out_read == uart_out_write;
 }
 
-void uart_outputQueueWrite(unsigned char ch) {
-    unsigned int next_write = (uart_out_queue_write + 1) % UART_MAX_QUEUE;
-    if (next_write != uart_out_queue_read) { // Check if the queue is not full
-        uart_output_queue[uart_out_queue_write] = ch; // Write to the queue
-        uart_out_queue_write = next_write; // Update write index
+/**
+ * Write a byte to the UART output queue
+ */
+void uart_fifoWrite(unsigned char ch) {
+    unsigned int next_write = (uart_out_write + 1) % UART_MAX_QUEUE;
+    
+    while (next_write == uart_out_read) uart_fifoToMem();
+
+    uart_out[uart_out_write] = ch; // Write to the queue
+    uart_out_write = next_write; // Update write index
+}
+
+/**
+ * Write the bytes from the UART output queue to the UART register
+ */
+void uart_fifoToMem() {
+    // Checks if the queue is not empty and the register is ready to write
+    while (!uart_fifoEmpty() && uart_writeByteReady()) {
+        uart_writeToMem(uart_out[uart_out_read]); // Write to UART
+        uart_out_read = (uart_out_read + 1) % UART_MAX_QUEUE; // Update read index
     }
 }
 
+/**
+ * Write a string to the UART Output Buffer.
+ */
+void uart_writeText(char *text) {
+    while (*text) {
+        if (*text == '\n') {
+            uart_fifoWrite('\r'); // Send carriage return before line feed
+        } 
+        uart_fifoWrite(*text++); // Send character
+    }
+}
 
+/**
+ * Update the UART by transferring data from the queue to the UART register.
+ * Then read any incoming data from the UART and write it to the output queue.
+ */
+void uart_update() {
+    uart_fifoToMem(); // Transfer data from the queue to the UART
 
-
-
+    if (uart_readByteReady()) {
+        unsigned char ch;
+        uart_readFromMem(&ch); // Read from UART
+        uart_fifoWrite(ch); // Write to the output queue
+    }
+}

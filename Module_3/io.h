@@ -38,5 +38,6 @@
 
 void uart_init();
 void uart_writeText(char *text);
-
+void uart_update();
+void uart_fifoToMem();
 #endif /* IO_H*/
