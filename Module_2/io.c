@@ -3,10 +3,12 @@
 
 #define PULL_NONE 0
 
+// Write a value to a memory-mapped I/O register
 void mmio_write(long reg, unsigned int value) {
     *(volatile unsigned int *)(reg) = value;
 }
 
+// Read a value from a memory-mapped I/O register
 unsigned int mmio_read(long reg) {
     return *(volatile unsigned int *)(reg);
 }
@@ -45,6 +47,7 @@ unsigned int gpio_clear (unsigned int pin, unsigned int value) {
     return gpio_call(pin, value, GPCLR0, 1, GPIO_MAX_PIN);
 }
 
+// Set the pull-up/pull-down resistor for the GPIO pin
 unsigned int gpio_pull (unsigned int pin, unsigned int value) {
     return gpio_call(pin, value, GPPUPPDN0, 2, GPIO_MAX_PIN);
 }
@@ -54,6 +57,7 @@ unsigned int gpio_function (unsigned int pin, unsigned int value) {
     return gpio_call(pin, value, GPFSEL0, 3, GPIO_MAX_PIN);
 }
 
+// Set the GPIO pin to use Alternate function 5
 void gpio_useAlt5 (unsigned int pin) {
     gpio_pull(pin, PULL_NONE);
     gpio_function(pin, GPIO_FUNCTION_ALT5);
@@ -98,7 +102,7 @@ void uart_writeText(char *text) {
         if (*text == '\n') {
             uart_writeByteBlocking('\r'); // Send carriage return before line feed
         } 
-        uart_writeByteBlocking(*text++;); // Send character
+        uart_writeByteBlocking(*text++); // Send character
     }
 }
 

@@ -36,7 +36,7 @@ These functions are used to read and write from the memory-mapped io addresses. 
 ### Pre-Defined Addresses
 In our functions we will reference many different addresses. It would be better to organize and set the names of the registers we intend to use. In Adam's file, he used an enum to set the values and name for each register. I'm used to using the `#define` macro to set the address of each register. There's seem to be a better way based on this [post](https://stackoverflow.com/questions/3970876/define-vs-enums-for-addressing-peripherals) on stack overflow but to each their own. There may be overhead for different interpretations but this is a small part of the bigger scope. 
 
-We first set the Peripheral Address to `0xFE000000` since this is where the peripheral memory in the memory-mapped io table starts. The GPIO base address would start with an *offset* of `0x200000`. 
+We first set the Peripheral Address to `0xFE000000` since this is the default address when RPi 4 boots into *Low Peripheral Mode*. It maps the peripherals on the last 64 MB of RAM and visible to the ARM processor at `0x0_FExx_xxxx`. There is a *High-Peripheral Mode* that uses the full 35-bit address map but it requires some complex changes in the kernel to make it work. **Memory-mapped I/O**(MMIO) means the user can talk directly to the hardware by reading and writing to the predetermined memory addresses defined on the RPi4. The GPIO base address would start with an *offset* of `0x200000`. 
 
 ![GPIO address in Datasheet](assets/gpio_address.png)
 
@@ -81,7 +81,7 @@ unsigned int gpio_call(unsigned int pin_number, unsigned int value, unsigned int
 **Find `io.c` to see the rest of the GPIO functions defined there.**
 
 ### UART functions
-We created two functions for the kernel to call `uart_init()` and `uart_writeText()`. To initialize the UART, we would need to clear the bits of the registers for configuration (essentially resetting the UART). Then we set the functions of the GPIO pins that we connected from the Serial cable. *In Adam's example, he uses pin 14, 15 Alt5 Function.* After we set the functions, we enable the transmitter and receiver:
+We created two functions for the kernel to call `uart_init()` and `uart_writeText()`. To initialize the UART, we would need to clear the bits of the registers for configuration (essentially resetting the UART). Then we set the functions of the GPIO pins that we connected from the Serial cable. *Note: In Adam's example, he uses pin 14, 15 Alt5 Function.* After we set the functions, we enable the transmitter and receiver:
 
 ```C
 void uart_init() {
