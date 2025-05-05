@@ -17,6 +17,13 @@ It uses two-wires to communicate with a "receiver" wire and a "transceiver" wire
 
 
 ## Connecting the serial cable
+UART communication relies on timing and both ends need to have the exact speed of data being sent or received. When using PuTTY, we set the baud rate to 115200 and that means the RPi 4 needs to communicate at the rate too. We need the CPU core frequency to be fast enough to handle that.
+
+Add this line to your `config.txt` to resolve this:
+```C
+core_freq_min=500
+```
+
 
 ## Getting mini UART working
 In order to implement UART, we need to write some functions in order to read the bits at the UART addresses. Here we have defined two functions to read and write the bits at the given address. 
