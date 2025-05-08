@@ -1,6 +1,7 @@
 #ifndef IO_H
 #define IO_H
 
+// GPIO ADDRESSES
 #define PERIPHERAL_BASE     0xFE000000
 #define GPFSEL0             (PERIPHERAL_BASE + 0x200000)
 #define GPSET0              (PERIPHERAL_BASE + 0x20001C)
@@ -10,6 +11,7 @@
 #define GPIO_MAX_PIN 53
 #define GPIO_FUNCTION_ALT5 2
 
+// AUX ADDRESSES
 #define AUX_BASE            (PERIPHERAL_BASE + 0x215000)
 #define AUX_IRQ0            (AUX_BASE + 0x00)
 #define AUX_ENABLES         (AUX_BASE + 0x04)
