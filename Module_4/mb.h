@@ -23,7 +23,11 @@ extern volatile unsigned int mbox[36];
 
 #define MBOX_TAG_PHYS_DIM    0x00048003
 #define MBOX_TAG_VIRT_DIM    0x00048004
+#define MBOX_TAG_VIRT_OFFSET 0x00048009
+#define MBOX_TAG_DEPTH       0x00048005
 
+#define MBOX_TAG_GETFB       0x00040001
+#define MBOX_TAG_GETPITCH    0x00040008
 
 unsigned int mbox_call(unsigned char ch);
 
