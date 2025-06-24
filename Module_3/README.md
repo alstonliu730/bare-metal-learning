@@ -29,6 +29,9 @@ void uart_update() {
 
 The first method `uart_fifoToMem()` is to transfer the data on the queue buffer to the UART registers. This function writes until the register is full. The flag at the $6^{th}$ bit on the `AUX_MU_LSR_REG` indicates the status of the transfer FIFO that can send and receive the data. Here you can see the format of the bits for this register:
 
-![LSR Register Bit Map for UART](assets/aux_lsr_reg.png)
+![Mini UART LSR Register Bit Map](assets/aux_lsr_reg.png)
 
-The second part of the function checks if the `AUX_MU_IO_REG` is ready to be read. Since only 8-bits can be transferred from this register we have to make sure that we are collecting the right data. This register is used to transmit and receive the data from UART.
+The second part of the function checks if the `AUX_MU_IO_REG` is ready to be read. Since only 8-bits can be transferred from this register we have to make sure that we are collecting the right data. This register is used to transmit and receive the data from UART. Here you can see the bit map for this register:
+
+![Mini UART IO Register Bit Map](assets/aux_io_reg.png)
+
