@@ -35,3 +35,15 @@ The Raspberry Pi 4B boot process is different since it differs from traditional 
 
     ![General Overview of the Instruction Set Architecture for ARM processors](assets/arm-isa.png)
 
+## Directions to boot the Raspberry Pi 4B
+1. After running the `make` command on your development machine, copy the file `kernel8.img` to the microSD card of the Raspberry Pi. Please use the imager tool that Raspberry Pi provides to get a clean install of Raspberry Pi OS.
+2. Create a fresh install on the microSD card with a Lite Version of the OS.
+3. Afterwards, you should see a bootfs directory when you plug it back into your computer (development machine). 
+4. If `arm_64bit` is not set in the file `config.txt`, then set it by typing out `arm_64bit=1`. By setting this attribute to a non-zero value, the RPi will use the `kernel8.img` to boot and take advantage of the larger memory capacity.
+5. Unmount the SD card and insert it into the SD Card slot on the Raspberry Pi and turn it on.
+
+## Results
+When powering up the RPi, you should be able to see a green LED and red LED. There should also be a flash of the "Rainbow Splash Screen" when you connect the screen to the Raspberry Pi then a black, blank screen. Since we haven't programmed the device to do anything. It should be a success! Congrats for finishing this first module!
+Here's an example of what I got:
+
+![Rainbow Splash Screen](assets/module_1_results.jpg)
