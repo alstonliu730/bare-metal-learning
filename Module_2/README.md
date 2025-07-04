@@ -1,12 +1,12 @@
 # Intro to UART
 Universal Asynchronous Receiver/Transmitter (UART) is a popular serial communication protocol used for exchanging data between devices, often found in micro-controllers and other electronic components.
 
-It uses two-wires to communicate with a "receiver" wire and a "transceiver" wire. Before USB, devices like mice, printers, and modems were connected using UART.
+It uses two-wires to communicate with a "receiver" wire and a "transceiver" wire. Before USB, devices like mice, printers, and modems were connected using UART. In this section we will explore how UART communication ports work and how we can see the inputs and outputs.
 
 ## Properties of UART
 - **Asynchronous Data Transfer**
 
-    The advantage of using UART protocols is that it's asynchronous meaning, the transmitter and receiver do not share a common clock signal. However, since they do not share a clock, both ends of the communication must transmit and receive at the same bit timing or baud rate. The most common UART baud rates are `4800`, `9600`, `192,200`, `572600`, & `115,200`. 
+    The advantage of using UART protocols is that it's asynchronous meaning, the transmitter and receiver do not share a common clock signal. However, since they do not share a clock, both ends of the communication must transmit and receive at the same bit timing or baud rate. The most common UART baud rates are `4800`, `9600`, `19200`, `57600`, & `115200` bps. 
 
 - **Format of UART Packet**
 
@@ -17,13 +17,40 @@ It uses two-wires to communicate with a "receiver" wire and a "transceiver" wire
 
 
 ## Connecting the serial cable
-UART communication relies on timing and both ends need to have the exact speed of data being sent or received. When using PuTTY, we set the baud rate to 115200 and that means the RPi 4 needs to communicate at the rate too. We need the CPU core frequency to be fast enough to handle that.
+UART communication relies on timing and both ends need to have the exact speed of data being sent or received. When using PuTTY, we set the baud rate to `115200` and that means the RPi 4 needs to communicate at the rate too. We need the CPU core frequency to be fast enough to handle that.
 
 Add this line to your `config.txt` to resolve this:
 ```C
 core_freq_min=500
 ```
 
+### Enabling COM Ports to view serial data
+To enable the serial data viewing in Windows and Mac, you need to download the drivers for legacy COM Ports. The cable I used can be bought on [Amazon for $8.99](https://www.amazon.com/dp/B0BXDM3B2V?ref=ppx_yo2ov_dt_b_fed_asin_title) (USD in 2025). If you are on windows or Mac you can install the drivers using this [link](https://www.prolific.com.tw/us/ShowProduct.aspx?pcid=41&showlevel=0041-0041). If you use or have a different cable, please find the drivers from the manufacturer's website.
+
+**NOTE**: For Mac, you may need to remove any previous driver before installing a newer one:
+```
+sudo rm -rf /System/Library/Extensions/ProlificUsbSerial.kext
+```
+
+#### Windows
+For Windows user, download PuTTY to access the COM ports. However, check in Device Manager if your cable is connected. Then set the baud rate and device name.
+
+#### Mac
+After installing the driver, plug in the adapter and open a Terminal. Enter the command: `ls /dev/cu.*` and find something similar called `usbserial`. You need to find the right TTY device. Then you can either use `minicom` or `screen`.
+
+#### Linux
+I personally prefer using `minicom` to access the ports. Use this command to install minicom: `sudo apt-get install minicom`
+
+To check where your device is located do: `sudo dmesg | grep tty` to see all kernel messages relating the to the *tty*. From there you should see something like this: 
+
+![alt text](assets/dmesg-ex.png)
+
+To get an interactive window with minicom use: `minicom -s`
+
+To exit do *Ctrl + A* and then *X* then confirm using *Y*. 
+
+If you want to connect to the COM port in one line, you can do this:
+`minicom -b 115200 -o -D /dev/ttyUSB0`
 
 ## Getting mini UART working
 In order to implement UART, we need to write some functions in order to read the bits at the UART addresses. Here we have defined two functions to read and write the bits at the given address. 
@@ -106,3 +133,5 @@ void uart_init() {
     mmio_write(AUX_MU_CNTL_REG, 3); // Enable transmitter and receiver
 }
 ```
+
+
