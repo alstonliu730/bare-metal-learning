@@ -52,6 +52,21 @@ To exit do *Ctrl + A* and then *X* then confirm using *Y*.
 If you want to connect to the COM port in one line, you can do this:
 `minicom -b 115200 -o -D /dev/ttyUSB0`
 
+## Connecting the Pins
+In many USB to TTL Serial Cables, there will be a black, red, green & white colored wire. These wires need to be connected to the right pins on the Raspberry Pi.
+- <span style="color:black">Black Wire</span>   - GND (Ground)
+- <span style="color:red">Red Wire</span>       - VCC (Power)
+- <span style="color:green">Green Wire</span>   - TX (Transmit)
+- <span style="color:white">White Wire</span>   - RX (Receive)
+
+**Try to figure out which are the right pins to use with this photo:**
+![Raspberry Pi Pin Layout](assets/rpi-pins.png)
+
+<details>
+    <summary>Click to find out which pins</summary>
+    The black wire can go onto any pins labeled <strong>Ground</strong> but the green wire should go on to <strong>GPIO 14</strong> and the white wire should go on to <strong>GPIO 15</strong>. Since we do not need to provide power to the Raspberry Pi, we can leave the red wire out.
+</details>
+
 ## Getting mini UART working
 In order to implement UART, we need to write some functions in order to read the bits at the UART addresses. Here we have defined two functions to read and write the bits at the given address. 
 

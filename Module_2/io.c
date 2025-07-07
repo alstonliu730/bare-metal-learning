@@ -5,12 +5,12 @@
 
 // Write a value to a memory-mapped I/O register
 void mmio_write(long reg, unsigned int value) {
-    *(volatile unsigned int *)(reg) = value;
+    *(volatile unsigned int *)reg = value;
 }
 
 // Read a value from a memory-mapped I/O register
 unsigned int mmio_read(long reg) {
-    return *(volatile unsigned int *)(reg);
+    return *(volatile unsigned int *)reg;
 }
 
 /**
@@ -24,12 +24,12 @@ unsigned int gpio_call(unsigned int pin, unsigned int value,
     if (value > field_mask) return 0;
 
     unsigned int num_field = 32 / field_size;
-    unsigned int reg = base + (pin / num_field) * 4;
+    unsigned int reg = base + ((pin / num_field) * 4);
     unsigned int shift = (pin % num_field) * field_size;
 
     unsigned int current_value = mmio_read(reg);
     current_value &= ~(field_mask << shift);
-    current_value |= (value << shift);
+    current_value |= value << shift;
     mmio_write(reg, current_value);
 
     return 1;
@@ -64,11 +64,18 @@ void gpio_useAlt5 (unsigned int pin) {
 }
 
 // UART functions
+
+// Create UART output buffer
+unsigned char uart_output_buffer[UART_MAX_QUEUE] __attribute__((aligned(16)));
+unsigned int uart_output_buffer_write = 0;
+unsigned int uart_output_buffer_read = 0;
+
+// UART register addresses
 /**
  * Initialize the UART for communication.
  */
 void uart_init() {
-    mmio_write(AUX_ENABLES, 1); // Enable UART1
+    mmio_write(AUX_ENABLES, 1); // Enable UART
     mmio_write(AUX_MU_IER_REG, 0); // Disable interrupts
     mmio_write(AUX_MU_CNTL_REG, 0); // Disable transmitter and receiver
     mmio_write(AUX_MU_LCR_REG, 3); // Set 8 data bits
@@ -85,24 +92,67 @@ void uart_init() {
 /**
  * Checks if the UART FIFO buffer is empty.
  */
-unsigned int uart_ready() {
+unsigned int uart_writeByteReady() {
     return mmio_read(AUX_MU_LSR_REG) & 0x20; // Check if the transmitter is ready
+}
+
+/**
+ * Checks if the UART FIFO buffer is ready to read.
+ */
+unsigned int uart_readByteReady() {
+    return mmio_read(AUX_MU_LSR_REG) & 0x01;
 }
 
 /**
  * Write a byte to the UART transmitter blockingly.
  */
 void uart_writeByteBlocking(unsigned char ch) {
-    while (!uart_ready());
+    while (!uart_writeByteReady());
     mmio_write(AUX_MU_IO_REG, (unsigned int)ch);
 }
 
+/**
+ * Return if the buffer is empty.
+ */
+unsigned int uart_bufferEmpty() {
+    return uart_output_buffer_write == uart_output_buffer_read;
+}
+
+/**
+ * Write out the UART output buffer until it's empty or the UART is not ready.
+ */
+void uart_loadOutputBuffer() {
+    while (!uart_bufferEmpty() && uart_writeByteReady()) {
+        uart_writeByteBlocking(uart_output_buffer[uart_output_buffer_read]);
+        uart_output_buffer_read = (uart_output_buffer_read + 1) % UART_MAX_QUEUE;
+    }
+}
+
+/**
+ * Write a byte to the UART output buffer.
+ * This function will block until there is space in the buffer.
+ */
+void uart_writeByte(unsigned char ch) {
+    unsigned int next_write = (uart_output_buffer_write + 1) % UART_MAX_QUEUE;
+
+    while (next_write == uart_output_buffer_read) {
+        // Wait until there is space in the buffer
+        uart_loadOutputBuffer();
+    }
+
+    uart_output_buffer[uart_output_buffer_write] = ch;
+    uart_output_buffer_write = next_write;
+}
+
+/**
+ * Write a string to the UART output while handling line endings.
+ */
 void uart_writeText(char *text) {
-    while (*text) {
+    while (*text && *text != '\0') {
         if (*text == '\n') {
-            uart_writeByteBlocking('\r'); // Send carriage return before line feed
+            uart_writeByte('\r'); // Send carriage return before line feed
         } 
-        uart_writeByteBlocking(*text++); // Send character
+        uart_writeByte(*text++); // Send character
     }
 }
 

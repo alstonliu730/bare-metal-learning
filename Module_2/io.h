@@ -8,7 +8,9 @@
 #define GPPUPPDN0           (PERIPHERAL_BASE + 0x2000E4)
 
 #define GPIO_MAX_PIN 53
+#define GPIO_FUNCTION_OUT 1
 #define GPIO_FUNCTION_ALT5 2
+#define GPIO_FUNCTION_ALT3 7
 
 #define AUX_BASE            (PERIPHERAL_BASE + 0x215000)
 #define AUX_ENABLES         (AUX_BASE + 0x04)
@@ -25,7 +27,7 @@
 #define UART_MAX_QUEUE      (16 * 1024)
 
 #define AUX_MU_BAUD(baud) \
-    ((AUX_UART_CLOCK / (baud * 8)) - 1)
+    ((AUX_UART_CLOCK / (baud * 8)) - 1)                   
 
 void uart_init();
 void uart_writeText(char *text);
