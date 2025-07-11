@@ -64,7 +64,7 @@ In many USB to TTL Serial Cables, there will be a black, red, green & white colo
 
 <details>
     <summary>Click to find out which pins</summary>
-    The black wire can go onto any pins labeled <strong>Ground</strong> but the green wire should go on to <strong>GPIO 14</strong> and the white wire should go on to <strong>GPIO 15</strong>. Since we do not need to provide power to the Raspberry Pi, we can leave the red wire out.
+    The black wire can go onto any pins labeled <strong>Ground</strong> but the green wire should go on to <strong>GPIO 15</strong> (RX for Pi) and the white wire should go on to <strong>GPIO 14</strong> (TX for Pi). Since we do not need to provide power to the Raspberry Pi, we can leave the red wire out.
 </details>
 
 ## Getting mini UART working

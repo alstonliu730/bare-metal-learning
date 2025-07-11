@@ -1,7 +1,8 @@
-// GPIO
 #include "io.h"
 
 #define PULL_NONE 0
+#define PULL_UP   1
+#define PULL_DOWN 2
 
 // Write a value to a memory-mapped I/O register
 void mmio_write(long reg, unsigned int value) {
@@ -35,8 +36,7 @@ unsigned int gpio_call(unsigned int pin, unsigned int value,
     return 1;
 }
 
-// GPIO functions
-
+// ------------ GPIO functions ------------
 // Enabling the GPIO pin to a high state
 unsigned int gpio_set (unsigned int pin, unsigned int value) {
     return gpio_call(pin, value, GPSET0, 1, GPIO_MAX_PIN);
@@ -49,10 +49,11 @@ unsigned int gpio_clear (unsigned int pin, unsigned int value) {
 
 // Set the pull-up/pull-down resistor for the GPIO pin
 unsigned int gpio_pull (unsigned int pin, unsigned int value) {
-    return gpio_call(pin, value, GPPUPPDN0, 2, GPIO_MAX_PIN);
+    return gpio_call(pin, value, GPPUPPDN0, 2, 16);
 }
 
-// Defines the GPIO pin's operation mode. See Section 5.3 in BCM2711 ARM Peripherals
+// Defines the GPIO pin's operation mode. 
+// See Section 5.3 in BCM2711 ARM Peripherals
 unsigned int gpio_function (unsigned int pin, unsigned int value) {
     return gpio_call(pin, value, GPFSEL0, 3, GPIO_MAX_PIN);
 }
@@ -63,10 +64,9 @@ void gpio_useAlt5 (unsigned int pin) {
     gpio_function(pin, GPIO_FUNCTION_ALT5);
 }
 
-// UART functions
-
+// ------------ UART functions ------------
 // Create UART output buffer
-unsigned char uart_output_buffer[UART_MAX_QUEUE] __attribute__((aligned(16)));
+unsigned char uart_output_buffer[UART_MAX_QUEUE];
 unsigned int uart_output_buffer_write = 0;
 unsigned int uart_output_buffer_read = 0;
 
@@ -75,16 +75,16 @@ unsigned int uart_output_buffer_read = 0;
  * Initialize the UART for communication.
  */
 void uart_init() {
+    gpio_useAlt5(14); // TXD1
+    gpio_useAlt5(15); // RXD1
+
     mmio_write(AUX_ENABLES, 1); // Enable UART
-    mmio_write(AUX_MU_IER_REG, 0); // Disable interrupts
     mmio_write(AUX_MU_CNTL_REG, 0); // Disable transmitter and receiver
+    mmio_write(AUX_MU_IER_REG, 0); // Disable interrupts
     mmio_write(AUX_MU_LCR_REG, 3); // Set 8 data bits
     mmio_write(AUX_MU_MCR_REG, 0); // Disable modem control
     mmio_write(AUX_MU_IIR_REG, 0xC6); // Disable interrupts
     mmio_write(AUX_MU_BAUD_REG, AUX_MU_BAUD(115200)); // Set baud rate
-
-    gpio_useAlt5(14); // TXD1
-    gpio_useAlt5(15); // RXD1
 
     mmio_write(AUX_MU_CNTL_REG, 3); // Enable transmitter and receiver
 }
@@ -144,11 +144,16 @@ void uart_writeByte(unsigned char ch) {
     uart_output_buffer_write = next_write;
 }
 
+unsigned char uart_readByte() {
+    while (!uart_readByteReady());
+    return (unsigned char) mmio_read(AUX_MU_IO_REG);
+}
+
 /**
  * Write a string to the UART output while handling line endings.
  */
 void uart_writeText(char *text) {
-    while (*text && *text != '\0') {
+    while (*text) {
         if (*text == '\n') {
             uart_writeByte('\r'); // Send carriage return before line feed
         } 
@@ -156,3 +161,26 @@ void uart_writeText(char *text) {
     }
 }
 
+void uart_update() {
+    uart_loadOutputBuffer();
+
+    if (uart_readByteReady()){
+        unsigned char ch = uart_readByte();
+        if (ch == '\r') uart_writeText("\n");
+        else uart_writeByte(ch);
+    }
+}
+
+#define GPIO_FUNCTION_OUT 1
+
+void led_init() {
+    gpio_function(42, GPIO_FUNCTION_OUT); // Built-in LED (if available)
+}
+
+void led_on() {
+    gpio_set(42, 1);
+}
+
+void led_off() {
+    gpio_clear(42, 1);
+}
