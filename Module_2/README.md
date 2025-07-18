@@ -134,17 +134,21 @@ We created two functions for the kernel to call `uart_init()` and `uart_writeTex
 
 ```C
 void uart_init() {
-    mmio_write(AUX_ENABLES, 1); // Enable UART1
-    mmio_write(AUX_MU_IER_REG, 0); // Disable interrupts
+    gpio_useAlt5(14); // TXD1
+    gpio_useAlt5(15); // RXD1
+
+    // Clear buffer pointers
+    uart_output_buffer_write = 0;
+    uart_output_buffer_read = 0;
+
+    mmio_write(AUX_ENABLES, 1); // Enable UART
     mmio_write(AUX_MU_CNTL_REG, 0); // Disable transmitter and receiver
+    mmio_write(AUX_MU_IER_REG, 0); // Disable interrupts
     mmio_write(AUX_MU_LCR_REG, 3); // Set 8 data bits
     mmio_write(AUX_MU_MCR_REG, 0); // Disable modem control
     mmio_write(AUX_MU_IIR_REG, 0xC6); // Disable interrupts
     mmio_write(AUX_MU_BAUD_REG, AUX_MU_BAUD(115200)); // Set baud rate
-
-    gpio_useAlt5(14); // TXD1
-    gpio_useAlt5(15); // RXD1
-
+    
     mmio_write(AUX_MU_CNTL_REG, 3); // Enable transmitter and receiver
 }
 ```

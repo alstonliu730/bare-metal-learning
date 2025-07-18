@@ -49,7 +49,7 @@ unsigned int gpio_clear (unsigned int pin, unsigned int value) {
 
 // Set the pull-up/pull-down resistor for the GPIO pin
 unsigned int gpio_pull (unsigned int pin, unsigned int value) {
-    return gpio_call(pin, value, GPPUPPDN0, 2, 16);
+    return gpio_call(pin, value, GPPUPPDN0, 2, GPIO_MAX_PIN);
 }
 
 // Defines the GPIO pin's operation mode. 
@@ -67,8 +67,8 @@ void gpio_useAlt5 (unsigned int pin) {
 // ------------ UART functions ------------
 // Create UART output buffer
 unsigned char uart_output_buffer[UART_MAX_QUEUE];
-unsigned int uart_output_buffer_write = 0;
-unsigned int uart_output_buffer_read = 0;
+unsigned int uart_output_buffer_write;
+unsigned int uart_output_buffer_read;
 
 // UART register addresses
 /**
@@ -78,6 +78,10 @@ void uart_init() {
     gpio_useAlt5(14); // TXD1
     gpio_useAlt5(15); // RXD1
 
+    // Clear buffer pointers
+    uart_output_buffer_write = 0;
+    uart_output_buffer_read = 0;
+
     mmio_write(AUX_ENABLES, 1); // Enable UART
     mmio_write(AUX_MU_CNTL_REG, 0); // Disable transmitter and receiver
     mmio_write(AUX_MU_IER_REG, 0); // Disable interrupts
@@ -85,7 +89,7 @@ void uart_init() {
     mmio_write(AUX_MU_MCR_REG, 0); // Disable modem control
     mmio_write(AUX_MU_IIR_REG, 0xC6); // Disable interrupts
     mmio_write(AUX_MU_BAUD_REG, AUX_MU_BAUD(115200)); // Set baud rate
-
+    
     mmio_write(AUX_MU_CNTL_REG, 3); // Enable transmitter and receiver
 }
 
@@ -122,7 +126,7 @@ unsigned int uart_bufferEmpty() {
  * Write out the UART output buffer until it's empty or the UART is not ready.
  */
 void uart_loadOutputBuffer() {
-    while (!uart_bufferEmpty() && uart_writeByteReady()) {
+    while (!uart_bufferEmpty()) {
         uart_writeByteBlocking(uart_output_buffer[uart_output_buffer_read]);
         uart_output_buffer_read = (uart_output_buffer_read + 1) % UART_MAX_QUEUE;
     }
@@ -134,7 +138,7 @@ void uart_loadOutputBuffer() {
  */
 void uart_writeByte(unsigned char ch) {
     unsigned int next_write = (uart_output_buffer_write + 1) % UART_MAX_QUEUE;
-
+    
     while (next_write == uart_output_buffer_read) {
         // Wait until there is space in the buffer
         uart_loadOutputBuffer();
@@ -144,6 +148,9 @@ void uart_writeByte(unsigned char ch) {
     uart_output_buffer_write = next_write;
 }
 
+/**
+ * Read a byte from the input register.
+ */
 unsigned char uart_readByte() {
     while (!uart_readByteReady());
     return (unsigned char) mmio_read(AUX_MU_IO_REG);
@@ -159,16 +166,40 @@ void uart_writeText(char *text) {
         } 
         uart_writeByte(*text++); // Send character
     }
+
+    uart_loadOutputBuffer();
 }
 
 void uart_update() {
-    uart_loadOutputBuffer();
-
-    if (uart_readByteReady()){
+    if (uart_readByteReady()) {
         unsigned char ch = uart_readByte();
-        if (ch == '\r') uart_writeText("\n");
+        // if the user press enter then we can write back
+        if (ch == '\r' || ch == '\n') {
+            uart_writeText("\n");
+        }
         else uart_writeByte(ch);
     }
+}
+
+void debug_buffer_contents() {
+    uart_writeByteBlocking('B');
+    uart_writeByteBlocking('u');
+    uart_writeByteBlocking('f');
+    uart_writeByteBlocking(':');
+    
+    for (int i = 0; i < 4; i++) {
+        unsigned char val = uart_output_buffer[i];
+        
+        // Print hex value
+        char hex1 = (val >> 4) & 0xF;
+        char hex2 = val & 0xF;
+        
+        uart_writeByteBlocking(hex1 < 10 ? '0' + hex1 : 'A' + hex1 - 10);
+        uart_writeByteBlocking(hex2 < 10 ? '0' + hex2 : 'A' + hex2 - 10);
+        uart_writeByteBlocking(' ');
+    }
+    uart_writeByteBlocking('\r');
+    uart_writeByteBlocking('\n');
 }
 
 #define GPIO_FUNCTION_OUT 1

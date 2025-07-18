@@ -33,16 +33,33 @@
 #define UART_MAX_QUEUE          (16 * 1024)
 
 #define AUX_MU_BAUD(baud) \
-    ((AUX_UART_CLOCK / (8 * baud)) - 1)               
+    ((AUX_UART_CLOCK / (8 * baud)) - 1)  
 
 void uart_init();
-void uart_writeText(char *text);
 void uart_update();
-unsigned int uart_writeByteReady();
-void uart_writeByteBlocking(unsigned char ch);
 
+// Writing function
+unsigned int uart_writeByteReady();
+void uart_writeByte(unsigned char ch);
+void uart_writeByteBlocking(unsigned char ch);
+void uart_writeText(char *text);
+void uart_loadOutputBuffer();
+
+// Reading functions
+unsigned char uart_readByte();
+unsigned int uart_readByteReady();
+
+// Debugging functions
 void led_init();
 void led_on();
 void led_off();
+void debug_buffer_contents();
+
+extern unsigned char uart_output_buffer[UART_MAX_QUEUE];
+
+// Suspend tasks for n amount of cycles
+static inline void delay(volatile unsigned int count) {
+    while (count--) asm("nop");
+}
 
 #endif /* IO_H*/
