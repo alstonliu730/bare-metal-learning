@@ -153,4 +153,20 @@ void uart_init() {
 }
 ```
 
+## Results
+
+In my first few attempts, I did not see any text written on the console. However, once I started to change the `AUX_UART_CLOCK` to a larger number, I started seeing symbols, letters, and unknown characters. Even though, it is not the right output, we were able to progress and find a problem from my implementation of the mini UART. Timing is important for UART to communicate both the input and the output. If the baudrate register is not set to the right value, the signals may be interpreted differently and is the reason I see random symbols. I believe the cause of this change in `AUX_UART_CLOCK` is the `arm_boost=1` in the config file. This causes the cores to run at a higher clock speed.
+
+However, the second problem I encountered was the array not having clean data when allocating memory. In the **bss section**, the portion of the program's memory for **uninitialized global and static variables**. The contents are zero initialized when the program starts. I noticed that my initial `uart_writeByte()` function didn't work since the output is buffered in an array. Since the array is not cleared during the startup, we see the incorrect values being printed out.
+
+To debug this, we will flush out the *buffer* and check the linker file. The buffer should be in the **bss section** of the memory since it's been declared but uninitialized. Since we do see some symbols, the `uart_writeByteBlocking()` function must be working since that's the only function directly writing into the register. So we create a debugging function to cycle through the first few characters in the buffer. To test this, we changed the `main` function to only print out `A` & `B`. 
+
+![Debugging output of adding A and B to the buffer](assets/debugging-1.png)
+
+We can see the buffer outputs an initial buffer of: `2F 73 6F` which shows that the bss section isn't cleared before the main function executes. After manually setting it before all other execution starts, we can see that the buffer is cleared with the values as `00`. Then we can see the values being inserted into the buffer.
+
+When we reset the `main` function to print out a hello message from the kernel this is what we get:
+
+![A console screenshot of the output in mini UART](assets/final_result.png)
+
 
