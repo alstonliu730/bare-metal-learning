@@ -169,4 +169,8 @@ When we reset the `main` function to print out a hello message from the kernel t
 
 ![A console screenshot of the output in mini UART](assets/final_result.png)
 
+Lastly, we are able to receive and send text through the mini UART protocol via the `uart_update()` function. When the user enters characters and uses the `return` key, the uart will display what the user wrote. If you want to enable **local echo** on `minicom`, you can press `CTRL` + `A` & then press `E`. This way you can see what you are typing and check if it matches the input.
+
+
+
 
