@@ -18,4 +18,4 @@ kernel8.img: boot.o $(OFILES)
 	$(OBJCOPY) -O binary kernel8.elf kernel8.img
 
 clean:
-	rm kernel8.elf *.o *.img > /dev/null 2> /dev/null || true
+	rm -f kernel8.elf *.o *.img > /dev/null 2> /dev/null || true

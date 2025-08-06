@@ -16,4 +16,7 @@ SECTIONS
 
    /DISCARD/ : { *(.comment) *(.gnu*) *(.note*) *(.eh_frame*) }
 }
-__bss_size = (__bss_end - __bss_start)>>3;
+/* Convert BSS size in bytes to 8-byte words (division by 8) */
+
+PROVIDE(BSS_WORD_SHIFT = 3);
+__bss_size = (__bss_end - __bss_start) >> BSS_WORD_SHIFT;

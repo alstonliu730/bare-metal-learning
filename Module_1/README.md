@@ -3,7 +3,7 @@ Bootstrapping refers to the process of initializing a computer system from a pow
 
 ## Stages of Bootstrapping
 In computing, bootstrapping involves several stages:
-1. **Intial Power-On** &rarr; Hardware circuits stablize
+1. **Initial Power-On** &rarr; Hardware circuits stablize
 2. **ROM Execution** &rarr; A small, hardwired program begins execution
 3. **Early Initialization** &rarr; Basic hardware components are configured
 4. **Secondary Bootloader** &rarr; Loads and executes a more complex program 
@@ -13,7 +13,7 @@ In computing, bootstrapping involves several stages:
 ## Boot Sequence on Raspberry Pi 4B (BCM2711)
 The Raspberry Pi 4B boot process is different since it differs from traditional PC architecture, utilizing its GPU as part of the boot sequence.
 
-1. **GPU Boot ROM** (First Stage Bootloader) - When power is applied the VideoCore GPU starts executing from its internal **Read-Only Memory** (ROM) The ROM code is initializing the essential GPU hardware. It checks for a bootable SD card and loads the second stage bootloader
+1. **GPU Boot ROM** (First Stage Bootloader) - When power is applied the VideoCore GPU starts executing from its internal **Read-Only Memory** (ROM). The ROM code is initializing the essential GPU hardware. It checks for a bootable SD card and loads the second stage bootloader
 2. **bootcode.bin** (Second Stage Bootloader) - These instructions are loaded by the ROM code and initializes the SDRAM and loads *start.elf*.
 3. **start.elf** (GPU firmware) - This parses the *config.txt* for configuration parameters. Here's an example of what a configuration file may look like: 
 
