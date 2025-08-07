@@ -1,0 +1,2 @@
+# set CPU frequency
+core_freq_min=500
