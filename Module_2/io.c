@@ -202,8 +202,6 @@ void debug_buffer_contents() {
     uart_writeByteBlocking('\n');
 }
 
-#define GPIO_FUNCTION_OUT 1
-
 void led_init() {
     gpio_function(42, GPIO_FUNCTION_OUT); // Built-in LED (if available)
 }
