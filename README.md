@@ -27,8 +27,7 @@ Please make sure you download the `aarch64 elf bare-metal target` version of the
 ### Linux/WSL 
 To install it, find the appropriate version for your computer. Afterwards, unzip the file using **tar**. Here's an example of using tar: `tar -xzvf [file-name].tar.gz`.
 
-Once you unpack the compiler, you must add it to your `.bashrc` file. For example, add the following line to the end of you `.bashrc` (replace `/path/to/compiler/bin` with the actual path to your compiler's `bin` directory).
-
+Once you unpack the compiler, you must add it to your `.bashrc` file. For example, add the following line to the end of your `.bashrc` (replace `/path/to/compiler/bin` with the actual path to your compiler's `bin` directory).
 
 ```bash
 export PATH = /path/to/compiler/bin:$PATH
