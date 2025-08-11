@@ -153,8 +153,6 @@ void uart_init() {
 }
 ```
 
-<<<<<<< HEAD
-=======
 ## UART FIFO Buffer
 The UART FIFO buffer is essential for asynchronous inputs and outputs. Sometimes the operational speeds may be different or not supported. This can help create a smoother output.
 
@@ -195,7 +193,6 @@ We also check if the `AUX_MU_IO_REG` is ready to be read. Since only 8-bits can 
 
 If there's a byte, we can write it to the buffer. The data is kept there until the user inputs a carriage return `\r`. The `writeText()` calls on the `uart_loadOutputBuffer()` to flush the buffer to the console. It writes the byte to the register FIFOs then increments the read pointer for the UART Buffer. 
 
->>>>>>> develop/Module_2
 ## Results
 
 In my first few attempts, I did not see any text written on the console. However, once I started to change the `AUX_UART_CLOCK` to a larger number, I started seeing symbols, letters, and unknown characters. Even though, it is not the right output, we were able to progress and find a problem from my implementation of the mini UART. Timing is important for UART to communicate both the input and the output. If the baudrate register is not set to the right value, the signals may be interpreted differently and is the reason I see random symbols. I believe the cause of this change in `AUX_UART_CLOCK` is the `arm_boost=1` in the config file. This causes the cores to run at a higher clock speed.
