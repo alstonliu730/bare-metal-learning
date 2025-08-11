@@ -153,6 +153,49 @@ void uart_init() {
 }
 ```
 
+<<<<<<< HEAD
+=======
+## UART FIFO Buffer
+The UART FIFO buffer is essential for asynchronous inputs and outputs. Sometimes the operational speeds may be different or not supported. This can help create a smoother output.
+
+### Data Type Structure
+In this implementation, we use a **circular buffer** that utilizes a read and write index variable. This can save space in an embedded and limited resource environment. We can customize the max size of the buffer. 
+
+To implement this, we use a `char` array with a set max value for this array. This will be located in the stack memory. The read and write will be first initialized to the beginning. Once you start writing data into the buffer.
+
+```C
+unsigned char uart_out[UART_MAX_QUEUE];     // UART output buffer
+unsigned int uart_out_write = 0;            // Write index
+unsigned int uart_out_read = 0;             // Read index
+```
+
+### Functions
+To facilitate the input of the uart, we first store it in the queue buffer. As it accumulates into the buffer, we make sure that the read index and the write index don't interlap. This is to make sure that the right amount of data is read. If the read index passes the write index then the length of the buffer that is *occupied* is the **max size**. To update the UART, we created a function that is in an infinite loop:
+
+```C
+void uart_update() {
+    if (uart_readByteReady()) {
+        unsigned char ch = uart_readByte(); // reads one char from the uart input
+        // if the user press enter then we can write back
+        if (ch == '\r' || ch == '\n') {
+            uart_writeText("\n");
+        }
+        else uart_writeByte(ch); // writes the char into the buffer
+    }
+}
+```
+In the function, we check if there's any input from the user. To check we use the `AUX_MU_LSR_REG` address to check if the transmitter or receiver is active.
+The flag at the $6^{th}$ bit on the `AUX_MU_LSR_REG` indicates the status of the transfer FIFO that can send and receive the data. Here you can see the format of the bits for this register:
+
+![Mini UART LSR Register Bit Map](assets/aux_lsr_reg.png)
+
+We also check if the `AUX_MU_IO_REG` is ready to be read. Since only 8-bits can be transferred from this register we have to make sure that we are collecting the right data. This register is used to transmit and receive the data from UART. Here you can see the bit map for this register:
+
+![Mini UART IO Register Bit Map](assets/aux_io_reg.png)
+
+If there's a byte, we can write it to the buffer. The data is kept there until the user inputs a carriage return `\r`. The `writeText()` calls on the `uart_loadOutputBuffer()` to flush the buffer to the console. It writes the byte to the register FIFOs then increments the read pointer for the UART Buffer. 
+
+>>>>>>> develop/Module_2
 ## Results
 
 In my first few attempts, I did not see any text written on the console. However, once I started to change the `AUX_UART_CLOCK` to a larger number, I started seeing symbols, letters, and unknown characters. Even though, it is not the right output, we were able to progress and find a problem from my implementation of the mini UART. Timing is important for UART to communicate both the input and the output. If the baudrate register is not set to the right value, the signals may be interpreted differently and is the reason I see random symbols. I believe the cause of this change in `AUX_UART_CLOCK` is the `arm_boost=1` in the config file. This causes the cores to run at a higher clock speed.
