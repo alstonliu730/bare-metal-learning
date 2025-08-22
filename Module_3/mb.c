@@ -6,8 +6,11 @@ volatile unsigned int __attribute__((aligned(16))) mbox[36];
 #define MBOX_STATUS_FULL mmio_read(MBOX_STATUS) & MBOX_FULL
 #define MBOX_STATUS_EMPTY mmio_read(MBOX_STATUS) & MBOX_EMPTY
 
+/**
+ * 
+ */
 unsigned int mbox_call(unsigned char ch) {
-    // Get the 28-bit aligned address of the mailbox buffer (MSB)
+    // Get the 28-bit (MSB) aligned address of the mailbox buffer (MSB)
     unsigned int msb = (unsigned int)(((long) &mbox) & ~0xF);
 
     // Get the channel number (LSB of the address)
@@ -31,5 +34,7 @@ unsigned int mbox_call(unsigned char ch) {
 
         if (r == mmio_read(MBOX_READ)) return (mbox[1] == MBOX_RESPONSE);
     }
+    
     return 0; // Should never reach here
 }
+

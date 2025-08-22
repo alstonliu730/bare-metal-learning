@@ -5,6 +5,8 @@
 
 extern volatile unsigned int mbox[36];
 
+#define MBOX_REQUEST    0x00000000
+
 // Mailbox Addresses
 #define VIDEOCORE_MBOX  (PERIPHERAL_BASE + 0x0000B880)
 #define MBOX_READ       (VIDEOCORE_MBOX + 0x00)
@@ -28,6 +30,47 @@ extern volatile unsigned int mbox[36];
 
 #define MBOX_TAG_GETFB       0x00040001
 #define MBOX_TAG_GETPITCH    0x00040008
+
+// Mailbox Channels
+#define MBOX_CH_POWER        0   
+#define MBOX_CH_FB           1
+#define MBOX_CH_VUART        2
+#define MBOX_CH_VCHIQ        3
+#define MBOX_CH_LEDS         4
+#define MBOX_CH_BTNS         5
+#define MBOX_CH_TOUCH        6
+#define MBOX_CH_COUNT        7
+#define MBOX_CH_PROP         8
+
+// Mailbox structs
+typedef struct {
+    unsigned int id;
+    unsigned int buffer_size;
+    unsigned int value_length;
+} mbox_tag;
+
+typedef struct {
+    unsigned int size;
+    void *tag;
+} mbox_cmd;
+
+typedef struct {
+    mbox_tag tag;
+    unsigned int id;
+    unsigned int value;
+} mbox_gen;
+
+typedef struct {
+    mbox_tag tag;
+    unsigned int id;
+    unsigned int state;
+} mbox_power;
+
+typedef struct {
+    mbox_tag tag;
+    unsigned int id;
+    unsigned int rate;
+} mbox_clock;
 
 unsigned int mbox_call(unsigned char ch);
 
