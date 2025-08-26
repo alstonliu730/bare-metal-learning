@@ -1,5 +1,6 @@
 #include "mb.h"
 #include "io.h"
+
 // The buffer must be 16-byte aligned as only the upper 28 bits of the address can be passed via the mailbox
 volatile unsigned int __attribute__((aligned(16))) mbox[36];
 
@@ -36,5 +37,30 @@ unsigned int mbox_call(unsigned char ch) {
     }
     
     return 0; // Should never reach here
+}
+
+unsigned int mbox_read(unsigned char ch) {
+    while (MBOX_STATUS_EMPTY) {
+
+    }
+
+    unsigned int data = mmio_read(MBOX_READ);
+
+    if((data & 0xF) == ch) {
+        return (data >>= 4);
+    }
+
+    return 0;
+}
+
+void mbox_write(unsigned char ch, unsigned int data) {
+    unsigned int addr = (data << 4) | (ch & 0xF);
+
+    while (MBOX_STATUS_FULL) {
+        // Wait until the mailbox is empty
+    }
+
+    mmio_write(MBOX_WRITE, addr);
+    return;
 }
 

@@ -38,6 +38,8 @@
 void uart_init();
 void uart_update();
 
+void mmio_write(long reg, unsigned int value);
+unsigned int mmio_read(long reg);
 // Writing function
 unsigned int uart_writeByteReady();
 void uart_writeByte(unsigned char ch);

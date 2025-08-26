@@ -6,6 +6,7 @@
 extern volatile unsigned int mbox[36];
 
 #define MBOX_REQUEST    0x00000000
+#define MBOX_TAG_LAST   0x00000000
 
 // Mailbox Addresses
 #define VIDEOCORE_MBOX  (PERIPHERAL_BASE + 0x0000B880)
@@ -23,11 +24,14 @@ extern volatile unsigned int mbox[36];
 #define MBOX_TAG_SETPWR      0x00028001
 #define MBOX_TAG_SETCLK      0x00038002
 
+// Set framebuffer tags
 #define MBOX_TAG_PHYS_DIM    0x00048003
 #define MBOX_TAG_VIRT_DIM    0x00048004
 #define MBOX_TAG_VIRT_OFFSET 0x00048009
 #define MBOX_TAG_DEPTH       0x00048005
+#define MBOX_TAG_PIXEL_ORDER 0x00048006
 
+// Get framebuffer tags
 #define MBOX_TAG_GETFB       0x00040001
 #define MBOX_TAG_GETPITCH    0x00040008
 

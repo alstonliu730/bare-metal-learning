@@ -47,10 +47,10 @@ To write to the mailbox:
 ### VC Mailbox
 Since the VideoCore Mailbox implementations are close-sourced and are not well documented, we need to interpret the information that is given and work off of that. In their [mailbox documentation](https://github.com/raspberrypi/firmware/wiki/Mailboxes), they describe the channels that controls the communication between the ARM CPU and VideoCore GPU. They also provide us with the registers and a page on how to *access* the mailbox [here](https://github.com/raspberrypi/firmware/wiki/Accessing-mailboxes). Although not documented well, we can work off what the manufacturer provides. 
 
-The registers in this mailbox protocol uses a different addressing mode. The VideoCore section in Physical RAM is mapped in from `0x0_4000_0000` downwards. The size of the SDRAM for VC peripherals is determined in the `config.txt` and if the L2 Cache is enabled. The **MMU(Memory Management Unit)** translates the virtual memory addresses to physical memory addresses in the RPi. 
+The registers in this mailbox protocol uses a different addressing mode. The VideoCore section in Physical RAM is mapped in from `0x0_4000_0000` downwards. The size of the SDRAM for VC peripherals is determined in the `config.txt` and if the L2 Cache is enabled. The **MMU (Memory Management Unit)** translates the virtual memory addresses to physical memory addresses in the RPi. We have not enabled the MMU and we didn't create our own. 
 
 #### Mailbox Messages
-The interface has 28-bits (MSB) available for the data and 4-bits (LSB) for the channel. This means when you send a request or receive the response the first 4-bits (LSB) will be the channel number and the rest will be the data value. 
+The interface has **28-bits (MSB)** available for the data and **4-bits (LSB)** for the channel. This means when you send a request or receive the response the first 4-bits (LSB) will be the channel number and the rest will be the data value for an unsigned integer (~ 32-bits). 
 
 #### Buffer Contents
 In the buffer, we can include multiple tags to be processed in one operations. Typically, the tags are processed in order but for interfaces that requires multiple tags for a single operation like the frame buffer. The structure of the buffer should look like this:
@@ -81,6 +81,8 @@ typedef struct {
 ```
 
 **Note: These are not the implementation but merely a template of what it may look like.**
+To have the compiler align the buffer for you, use `__attribute__` and find the **aligned** macro.
 
-### 
+### Frame Buffer tags
+In the property tag channel, we can group the setter and getter tags in one command with the exception of the frame buffer channel. We can group together the tags in one buffer for the VideoCore GPU to execute in one command. To do this, we set the size of the encapsulating tag that will contain a buffer of concatednated tags. 
 
