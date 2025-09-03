@@ -22,6 +22,7 @@ unsigned int mbox_call(unsigned char ch) {
 
     while (MBOX_STATUS_FULL) {
         // Wait until the mailbox is not full
+        uart_writeText("MBOX FULL\n");
     }
 
     // Write the address to the mailbox

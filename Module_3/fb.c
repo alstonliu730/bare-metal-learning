@@ -1,9 +1,13 @@
 #include "io.h"
 #include "mb.h"
 #include "fb.h"
+#include "font.h"
+#include "common.h"
 
-unsigned int width, height, fb_pitch, isrgb;
+unsigned int width, height, fb_pitch, isrgb, fb_size;
 unsigned char *fb_addr;
+
+#define HEX_STR(h) ((h < 10) ? '0' + h : 'A' + h - 10)
 
 void fb_init() {
     // Requesting mailbox to process multiple commands
@@ -40,9 +44,9 @@ void fb_init() {
     mbox[24] = 0x1; // RGB
 
     mbox[25] = MBOX_TAG_GETFB;
-    mbox[26] = 4;
+    mbox[26] = 8;
     mbox[27] = MBOX_REQUEST;
-    mbox[28] = 16; // 16-byte aligned
+    mbox[28] = 4096;
     mbox[29] = 0;  // Will be filled with the framebuffer address by the GPU
 
     mbox[30] = MBOX_TAG_GETPITCH;
@@ -52,13 +56,37 @@ void fb_init() {
 
     mbox[34] = MBOX_TAG_LAST;
 
-    if (mbox_call(MBOX_CH_FB) && mbox[20] == 32 && mbox[28] != 0 && mbox[33] != 0) {
-        fb_addr = (unsigned char *)(unsigned long)(mbox[28] & 0x3FFFFFFF); // Convert GPU address to ARM address
-        fb_pitch = mbox[33];
-        width = mbox[5];
-        height = mbox[6];
-        isrgb = mbox[24];
+    if (mbox_call(MBOX_CH_PROP) && mbox[1] == 0x80000000) {
+        uart_writeText("Frame Buffer Initialization Success\n");
+        // Check individual tag responses
+        if ((mbox[27] & 0x80000000) && mbox[28] != 0) {
+            fb_addr = (unsigned char *)((uintptr_t)(mbox[28] & 0x3FFFFFFF));
+            fb_size = mbox[29];
+            fb_pitch = mbox[33];
+            width = mbox[5];
+            height = mbox[6];
+            isrgb = mbox[24];
+        }
+    } else {
+        uart_writeText("Frame Buffer Init Failed\n");
+    }
+
+    // debugging
+    uart_writeText("Buffer: \n");
+    for(int i = 0; i < 36; i++) {
+        unsigned int val = mbox[i];
+
+        uart_writeInt(i, sizeof(int));
+        uart_writeText(": 0x");
+        delay(100);
+        for (int k = 28; k >= 0; k -= 4) {
+            uart_writeByte(HEX_STR(((val >> k) & 0xF)));
+        }
+        uart_writeText("\n");
     }
 }
 
-
+void drawPixel(int x, int y, unsigned char attr) {
+    int offs = (y * fb_pitch) + (x * 4);
+    *((unsigned int*)(fb_addr + offs)) = rgb_pal[attr & 0x0F];
+}

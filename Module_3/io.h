@@ -29,7 +29,7 @@
 #define AUX_MU_STAT_REG         (AUX_BASE + 0x64)
 #define AUX_MU_BAUD_REG         (AUX_BASE + 0x68)
 
-#define AUX_UART_CLOCK          500000000   // 500MHz
+#define AUX_UART_CLOCK          250000000   // 250MHz
 #define UART_MAX_QUEUE          (16 * 1024)
 
 #define AUX_MU_BAUD(baud) \
@@ -46,6 +46,7 @@ void uart_writeByte(unsigned char ch);
 void uart_writeByteBlocking(unsigned char ch);
 void uart_writeText(char *text);
 void uart_loadOutputBuffer();
+void uart_writeInt(int i, unsigned int n);
 
 // Reading functions
 unsigned char uart_readByte();

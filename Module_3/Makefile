@@ -1,6 +1,6 @@
 CFILES = $(wildcard *.c)
 OFILES = $(CFILES:.c=.o)
-GCCFLAGS = -Wall -O2 -ffreestanding -nostdinc -nostdlib -nostartfiles
+GCCFLAGS = -Wall -O2 -ffreestanding -nostdinc -nostdlib -nostartfiles -mstrict-align
 GCC = aarch64-none-elf-gcc
 LINK = aarch64-none-elf-ld
 OBJCOPY = aarch64-none-elf-objcopy

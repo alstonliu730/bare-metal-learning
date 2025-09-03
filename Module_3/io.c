@@ -88,7 +88,7 @@ void uart_init() {
     mmio_write(AUX_MU_LCR_REG, 3); // Set 8 data bits
     mmio_write(AUX_MU_MCR_REG, 0); // Disable modem control
     mmio_write(AUX_MU_IIR_REG, 0xC6); // Disable interrupts
-    mmio_write(AUX_MU_BAUD_REG, AUX_MU_BAUD(115200)); // Set baud rate
+    //mmio_write(AUX_MU_BAUD_REG, AUX_MU_BAUD(115200)); // Set baud rate
     
     mmio_write(AUX_MU_CNTL_REG, 3); // Enable transmitter and receiver
 }
@@ -146,6 +146,39 @@ void uart_writeByte(unsigned char ch) {
 
     uart_output_buffer[uart_output_buffer_write] = ch;
     uart_output_buffer_write = next_write;
+}
+
+/**
+ * Writes the integer i as 
+ */
+void uart_writeInt(int i, unsigned int n) {
+    char buf_temp[n];
+    if (i == 0) {
+        uart_writeByte('0');
+        return;
+    }
+    // Check if int is a negative
+    else if (i < 0) {
+        uart_writeByte('-');
+        i = ~i; // negate the number
+    }
+
+    // loop through until the integer is equal to 0
+    int j = n - 1;
+    while (i > 0 && j != 0) {
+        buf_temp[j] = (i % 10) + '0';
+        i /= 10;
+        j--;
+    }
+
+    // print out the integer
+    int sum = 0;
+    for (int k = 0; k < n; k++) {
+        sum += (buf_temp[k] - '0');
+        if (sum != 0) {
+            uart_writeByte(buf_temp[k]);
+        }
+    }
 }
 
 /**

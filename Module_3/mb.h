@@ -3,7 +3,7 @@
 
 #include "io.h"
 
-extern volatile unsigned int mbox[36];
+extern volatile unsigned int __attribute__((aligned(16))) mbox[36];
 
 #define MBOX_REQUEST    0x00000000
 #define MBOX_TAG_LAST   0x00000000
