@@ -211,6 +211,18 @@ When we reset the `main` function to print out a hello message from the kernel t
 
 Lastly, we are able to receive and send text through the mini UART protocol via the `uart_update()` function. When the user enters characters and uses the `return` key, the uart will display what the user wrote. If you want to enable **local echo** on `minicom`, you can press `CTRL` + `A` & then press `E`. This way you can see what you are typing and check if it matches the input.
 
+## Extra
+The `config.txt` file controls how the GPU firmware initializes hardware before your code runs. Understanding the boot sequence is crucial:
+
+1. GPU boots first using ROM code (not the ARM CPU)
+2. GPU loads bootcode.bin from SD card (proprietary firmware)
+3. GPU loads `start4.elf` (main firmware for RPi 4)
+4. GPU reads `config.txt` and configures hardware accordingly
+5. GPU initializes RAM, clocks, GPIO, display, peripherals
+6. GPU loads your `kernel8.img` to memory
+7. GPU releases ARM CPU from reset to start executing your code.
+
+Since we cannot modify Broadcom's proprietary firmware, we're writing bare-metal code that runs after the firmware has initialized the system. Our code depends on the firmware having properly configured the hardware based on config.txt settings. This is why settings like `enable_uart=1` or `display_auto_detect=1` are critical - they tell the firmware what to initialize before our code runs.
 
 
 
