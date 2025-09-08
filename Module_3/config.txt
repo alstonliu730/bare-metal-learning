@@ -25,8 +25,8 @@ hdmi_force_hotplug=1
 disable_overscan=1
 
 # Optional: force specific resolution
-# hdmi_group=1
-# hdmi_mode=16
+hdmi_group=1
+hdmi_mode=16
 
 # Run at max frequency
 # arm_boost=1

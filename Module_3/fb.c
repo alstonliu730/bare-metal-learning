@@ -46,8 +46,8 @@ void fb_init() {
     mbox[25] = MBOX_TAG_GETFB;
     mbox[26] = 8;
     mbox[27] = MBOX_REQUEST;
-    mbox[28] = 4096;
-    mbox[29] = 0;  // Will be filled with the framebuffer address by the GPU
+    mbox[28] = 4096; // Will be filled with the framebuffer address by the GPU
+    mbox[29] = 0; // Framebuffer size
 
     mbox[30] = MBOX_TAG_GETPITCH;
     mbox[31] = 4;
@@ -89,4 +89,26 @@ void fb_init() {
 void drawPixel(int x, int y, unsigned char attr) {
     int offs = (y * fb_pitch) + (x * 4);
     *((unsigned int*)(fb_addr + offs)) = rgb_pal[attr & 0x0F];
+}
+
+void drawChar(unsigned char ch, int x, int y, unsigned char attr)
+{   
+    int ch_id = (ch < FONT_NUMGLYPHS ? ch : 0);
+    unsigned char *glyph = (unsigned char *)&font[ch_id];
+    
+    for (int i=0;i < FONT_HEIGHT; i++) {
+        unsigned int f_line = *glyph & 0xFF;
+        uart_writeText("Glyph: ");
+        uart_writeInt(f_line, 4);
+
+        for (int j=0; j< FONT_WIDTH; j++) {
+            unsigned char mask = 1 << j;
+            unsigned char col = (*glyph & mask) ? attr & 0x0f : (attr & 0xf0) >> 4;
+
+            drawPixel(x+j, y+i, col);
+        }
+        
+        glyph += 1;
+        uart_writeText("\n");
+    }
 }

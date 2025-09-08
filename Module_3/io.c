@@ -149,10 +149,11 @@ void uart_writeByte(unsigned char ch) {
 }
 
 /**
- * Writes the integer i as 
+ * Writes the integer i as a string and n as the size of the buffer.
  */
 void uart_writeInt(int i, unsigned int n) {
     char buf_temp[n];
+
     if (i == 0) {
         uart_writeByte('0');
         return;

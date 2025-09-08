@@ -29,6 +29,9 @@ void main() {
     delay(1000);
     led_off();
     uart_writeText("Frame Buffer Initialized\n");
+
+    // Test drawing characters on screen
+    drawChar('O', 1000, 500, 0x05);
     
     while(1) {
         uart_update();

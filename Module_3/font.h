@@ -23,8 +23,8 @@ unsigned int rgb_pal[] = {
 
 #define FONT_WIDTH      8
 #define FONT_HEIGHT     8
-#define FONT_BPG        8
-#define FONT_BPL        8
+#define FONT_BPG        8   // Bytes per Glyph
+#define FONT_BPL        8   
 #define FONT_NUMGLYPHS 224
 
 unsigned char font[FONT_NUMGLYPHS][FONT_BPG] = {
