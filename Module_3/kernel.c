@@ -32,6 +32,14 @@ void main() {
 
     // Test drawing characters on screen
     drawChar('O', 1000, 500, 0x05);
+    drawChar('H', 1000, 508, 0x04);
+
+    // Test drawing lines of text on screen
+    drawString("Hello World!", 1400, 600, 0x04);
+
+    // Test drawing shapes on screen
+    drawLine(100, 500, 350, 700, 0x0C);
+    
     
     while(1) {
         uart_update();

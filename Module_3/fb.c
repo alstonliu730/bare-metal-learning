@@ -97,10 +97,6 @@ void drawChar(unsigned char ch, int x, int y, unsigned char attr)
     unsigned char *glyph = (unsigned char *)&font[ch_id];
     
     for (int i=0;i < FONT_HEIGHT; i++) {
-        unsigned int f_line = *glyph & 0xFF;
-        uart_writeText("Glyph: ");
-        uart_writeInt(f_line, 4);
-
         for (int j=0; j< FONT_WIDTH; j++) {
             unsigned char mask = 1 << j;
             unsigned char col = (*glyph & mask) ? attr & 0x0f : (attr & 0xf0) >> 4;
@@ -109,6 +105,49 @@ void drawChar(unsigned char ch, int x, int y, unsigned char attr)
         }
         
         glyph += 1;
-        uart_writeText("\n");
+    }
+}
+
+void drawString(const char* str, int x, int y, unsigned char attr) {
+    int cx = x;
+    int cy = y;
+
+    // traverse through string
+    while(*str) {
+        char ch = *str;
+
+        // check for boundaries
+        if (cx >= width || ch == '\r' || ch == '\n') {
+            cy += FONT_HEIGHT;
+            cx = 0; 
+        }
+
+        drawChar(ch, cx, cy, attr);
+        cx += FONT_WIDTH;
+        str++;
+    }
+}
+
+void drawLine(int x0, int y0, int x1, int y1, unsigned char attr) {
+    int dx = x1 - x0;
+    int dy = y1 - y0;
+
+    int m_new = 2 * dy;
+    int err_new = m_new - dx;
+    
+    for (int i = x0, j = y0; i <= x1; i++) {
+        uart_writeText("(");
+        uart_writeInt(i, 4);
+        uart_writeText(", ");
+        uart_writeInt(j, 4);
+        uart_writeText(")\n");
+        drawPixel(i, j, attr);
+
+        err_new += m_new;
+
+        if (err_new >= 0){
+            j++;
+            err_new -= 2 * dx;
+        }
     }
 }
