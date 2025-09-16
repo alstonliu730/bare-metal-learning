@@ -136,11 +136,6 @@ void drawLine(int x0, int y0, int x1, int y1, unsigned char attr) {
     int err_new = m_new - dx;
     
     for (int i = x0, j = y0; i <= x1; i++) {
-        uart_writeText("(");
-        uart_writeInt(i, 4);
-        uart_writeText(", ");
-        uart_writeInt(j, 4);
-        uart_writeText(")\n");
         drawPixel(i, j, attr);
 
         err_new += m_new;

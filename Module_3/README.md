@@ -174,4 +174,8 @@ Buffer:
 Frame Buffer Initialized
 ```
 
-This time we can see the size of the screen that was allocated in the array position 5, 6, 10, & 11. We can also see the allocation for the framebuffer at position 28 and 29 that returns the address and size of the buffer. We added a few functions to be able to print and draw shapes on the screen. This way we know that the display out is working and therefore for future development, we can create a terminal that allows the users to input commands.
+This time we can see the size of the screen that was allocated in the array position 5, 6, 10, & 11. We can also see the allocation for the framebuffer at position 28 and 29 that returns the address and size of the buffer. We added a few functions to be able to print and draw shapes on the screen. This way we know that the display out is working and therefore for future development, we can create a terminal that allows the users to input commands. This is what it looks like when we tested the framebuffer.
+
+![Resulting Image of the Frame Buffer Test](assets/result.jpeg)
+![Close up of string text on display](assets/hello_world_test.jpeg)
+
