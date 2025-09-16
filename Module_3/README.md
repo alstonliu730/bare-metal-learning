@@ -84,5 +84,94 @@ typedef struct {
 To have the compiler align the buffer for you, use `__attribute__` and find the **aligned** macro.
 
 ### Frame Buffer tags
-In the property tag channel, we can group the setter and getter tags in one command with the exception of the frame buffer channel. We can group together the tags in one buffer for the VideoCore GPU to execute in one command. To do this, we set the size of the encapsulating tag that will contain a buffer of concatednated tags. 
+In the property tag channel, we can group the setter and getter tags in one command with the exception of the frame buffer channel. We can group together the tags in one buffer for the VideoCore GPU to execute in one command. To do this, we set the size of the encapsulating tag that will contain a buffer of concatednated tags. This would include the first encapsulating tag, and the buffer, and the end tag.
 
+## Result
+As we initialize the framebuffer, there was no output to the mini uart terminal. We usually see a `"UART Initialized"` message but nothing shows up. We diagnosed that the configuration file was not working. We had initially used the default configuration file from the Raspberry Pi Image Tool. We changed it so that the essential firmware can be used. As we fix the UART, we can see that the framebuffer initialization failed. 
+
+The buffer returns the following when it fails. I created a debugging feature when it initializes to see what it returns.
+```
+UART Initialized
+Frame Buffer Init Failed
+Buffer 
+0: 0x0000008C
+1: 0x80000001
+2: 0x00048003
+3: 0x00000008
+4: 0x80000008
+5: 0x00000000
+6: 0x00000000
+7: 0x00048004
+8: 0x00000008
+9: 0x80000008
+10: 0x00000000
+11: 0x00000000
+12: 0x00048009
+13: 0x00000008
+14: 0x80000008
+15: 0x00000000
+16: 0x00000000
+17: 0x00048005
+18: 0x00000004
+19: 0x80000004
+20: 0x00000000
+21: 0x00048006
+22: 0x00000004
+23: 0x80000004
+24: 0x00000000
+25: 0x00040001
+26: 0x00000008
+27: 0x80000008
+28: 0x00000000
+29: 0x00000000
+30: 0x00040008
+31: 0x00000004
+32: 0x80000004
+33: 0x00000000
+34: 0x00000000
+35: 0x03000000
+```
+We see that the value at 1 returns an error code (0x80000001) from the mailbox. I also noticed none of the values are being returned to the array. We fixed the initialization function by sending it to the property channel instead of the framebuffer channel that is deprecated from the VideoCore Documentation. In the following text, we see that the message received by the mailbox came back successful. It contains the returned values and the framebuffer address:
+```
+Frame Buffer Initialization Success
+Buffer: 
+0: 0x0000008C
+ 1: 0x80000000
+ 2: 0x00048003
+ 3: 0x00000008
+ 4: 0x80000008
+ 5: 0x00000780
+ 6: 0x00000438
+ 7: 0x00048004
+ 8: 0x00000008
+ 9: 0x80000008
+ 10: 0x00000780
+ 11: 0x00000438
+ 12: 0x00048009
+ 13: 0x00000008
+ 14: 0x80000008
+ 15: 0x00000000
+ 16: 0x00000000
+ 17: 0x00048005
+ 18: 0x00000004
+ 19: 0x80000004
+ 20: 0x00000020
+ 21: 0x00048006
+ 22: 0x00000004
+ 23: 0x80000004
+ 24: 0x00000001
+ 25: 0x00040001
+ 26: 0x00000008
+ 27: 0x80000008
+ 28: 0xFE402000
+ 29: 0x007F8000
+ 30: 0x00040008
+ 31: 0x00000004
+ 32: 0x80000004
+ 33: 0x00001E00
+ 34: 0x00000000
+ 35: 0x00000000
+Frame Buffer Initialized
+```
+
+This time we can see the size of the screen that was allocated in the array position 5, 6, 10, & 11. We can also see the allocation for the framebuffer at position 28 and 29 that returns the address and size of the buffer. We added a few functions to be able to print and draw shapes on the screen. This way we know that the display out is working and therefore for future development, we can create a terminal that allows the users to input commands.
