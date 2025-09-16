@@ -39,8 +39,7 @@ void main() {
 
     // Test drawing shapes on screen
     drawLine(100, 500, 350, 700, 0x0C);
-    
-    
+
     while(1) {
         uart_update();
     }
