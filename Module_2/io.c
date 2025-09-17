@@ -89,7 +89,7 @@ void uart_init() {
     mmio_write(AUX_MU_MCR_REG, 0); // Disable modem control
     mmio_write(AUX_MU_IIR_REG, 0xC6); // Disable interrupts
     mmio_write(AUX_MU_BAUD_REG, AUX_MU_BAUD(115200)); // Set baud rate
-    
+
     mmio_write(AUX_MU_CNTL_REG, 3); // Enable transmitter and receiver
 }
 

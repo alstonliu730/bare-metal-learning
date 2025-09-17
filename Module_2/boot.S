@@ -6,9 +6,9 @@
 
 _start:
     // Check Processor ID is 0 (main core), else hang
-    mrs     x1, mpidr_el1       // mpidr_el1 = Multiprocessor ID Register
-    and     x1, x1, #3
-    cbz     x1, 2f
+    mrs     x0, mpidr_el1       // mpidr_el1 = Multiprocessor ID Register
+    and     x0, x0, #3
+    cbz     x0, 2f
 
 1:  
     // Not on main core, infinite wait loop
@@ -17,17 +17,17 @@ _start:
 
 2:  // On main core
     // Sets the stack to start below our code
-    ldr     x1, =_start
-    mov     sp, x1
+    ldr     x0, =_start
+    mov     sp, x0
 
     // Clean the BSS section
-    ldr     x1, =__bss_start    // Start address
-    ldr     x2, =__bss_end      // End address
+    ldr     x0, =__bss_start    // Start address
+    ldr     x1, =__bss_end      // End address
 
 3:  // quit the loop if zero
-    cmp     x1, x2
+    cmp     x0, x1
     b.ge    4f                  // Branch if start >= end
-    str     xzr, [x1], #8       // Clear 8 bytes, increment x1
+    str     xzr, [x0], #8       // Clear 8 bytes, increment x1
     b       3b                  // Loop
 
 4:  // Jump to our main() routine in C (make sure it doesn't return)
