@@ -8,7 +8,7 @@ volatile unsigned int __attribute__((aligned(16))) mbox[36];
 #define MBOX_STATUS_EMPTY mmio_read(MBOX_STATUS) & MBOX_EMPTY
 
 /**
- * 
+ * Sends the 16-byte aligned array to the mailbox for the framebuffer.
  */
 unsigned int mbox_call(unsigned char ch) {
     // Get the 28-bit (MSB) aligned address of the mailbox buffer (MSB)
@@ -40,9 +40,12 @@ unsigned int mbox_call(unsigned char ch) {
     return 0; // Should never reach here
 }
 
+/**
+ * Reads the mailbox data from the given channel.
+ */
 unsigned int mbox_read(unsigned char ch) {
     while (MBOX_STATUS_EMPTY) {
-
+        // Wait until the mailbox is not empty
     }
 
     unsigned int data = mmio_read(MBOX_READ);
@@ -54,6 +57,9 @@ unsigned int mbox_read(unsigned char ch) {
     return 0;
 }
 
+/**
+ * Writes to the mailbox given the channel.
+ */
 void mbox_write(unsigned char ch, unsigned int data) {
     unsigned int addr = (data << 4) | (ch & 0xF);
 

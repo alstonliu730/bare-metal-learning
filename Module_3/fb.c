@@ -9,6 +9,9 @@ unsigned char *fb_addr;
 
 #define HEX_STR(h) ((h < 10) ? '0' + h : 'A' + h - 10)
 
+/**
+ * Initializes the Framebuffer using the Mailbox Property Channel.
+ */
 void fb_init() {
     // Requesting mailbox to process multiple commands
     mbox[0] = 35 * 4; // length of message in bytes
@@ -70,27 +73,19 @@ void fb_init() {
     } else {
         uart_writeText("Frame Buffer Init Failed\n");
     }
-
-    // debugging
-    uart_writeText("Buffer: \n");
-    for(int i = 0; i < 36; i++) {
-        unsigned int val = mbox[i];
-
-        uart_writeInt(i, sizeof(int));
-        uart_writeText(": 0x");
-        delay(100);
-        for (int k = 28; k >= 0; k -= 4) {
-            uart_writeByte(HEX_STR(((val >> k) & 0xF)));
-        }
-        uart_writeText("\n");
-    }
 }
 
+/**
+ * Draws a pixel with the color attribute from the rgb pallete.
+ */
 void drawPixel(int x, int y, unsigned char attr) {
     int offs = (y * fb_pitch) + (x * 4);
     *((unsigned int*)(fb_addr + offs)) = rgb_pal[attr & 0x0F];
 }
 
+/**
+ * Draw a character at the given point with the color attribute.
+ */
 void drawChar(unsigned char ch, int x, int y, unsigned char attr)
 {   
     int ch_id = (ch < FONT_NUMGLYPHS ? ch : 0);
@@ -108,6 +103,9 @@ void drawChar(unsigned char ch, int x, int y, unsigned char attr)
     }
 }
 
+/**
+ * Draw a line of characters starting at the given point with the color attribute.
+ */
 void drawString(const char* str, int x, int y, unsigned char attr) {
     int cx = x;
     int cy = y;
@@ -128,6 +126,9 @@ void drawString(const char* str, int x, int y, unsigned char attr) {
     }
 }
 
+/**
+ * Draw a line from a source point to a destination point with the color attribute.
+ */
 void drawLine(int x0, int y0, int x1, int y1, unsigned char attr) {
     int dx = x1 - x0;
     int dy = y1 - y0;

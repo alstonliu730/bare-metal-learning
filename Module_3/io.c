@@ -161,7 +161,7 @@ void uart_writeInt(int i, unsigned int n) {
     // Check if int is a negative
     else if (i < 0) {
         uart_writeByte('-');
-        i = ~i; // negate the number
+        i = -i; // negate the number
     }
 
     // loop through until the integer is equal to 0
