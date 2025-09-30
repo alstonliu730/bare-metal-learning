@@ -1,10 +1,11 @@
-#include "io.h"
+#include "../include/io.h"
 
 #define PULL_NONE 0
 #define PULL_UP   1
 #define PULL_DOWN 2
 
 #define INT_BUF_SIZE 10
+#define HEX_BUF_SIZE 12
 
 // Write a value to a memory-mapped I/O register
 void mmio_write(long reg, unsigned int value) {
@@ -151,7 +152,7 @@ void uart_writeByte(unsigned char ch) {
 }
 
 /**
- * Writes the integer i as a string and n as the size of the buffer.
+ * Prints out the integer to UART in base 10 digits.
  */
 void uart_writeInt(int num) {
     char buf[INT_BUF_SIZE];
@@ -171,6 +172,41 @@ void uart_writeInt(int num) {
         while (num > 0) {
             buf[i++]= (num % 10) + '0';
             num /= 10;
+        }
+    }
+
+    if (isNeg) {
+        buf[i++] = '-';
+    }
+
+    // Prints characters in order
+    while(i > 0) {
+        uart_writeByte(buf[--i]);
+    }
+}
+
+/**
+ * Prints out the integer to UART in hexadecimal format.
+ */
+void uart_writeHex(int num) {
+    char buf[HEX_BUF_SIZE];
+    int i = 0;
+    int isNeg = 0;
+
+     // Check if int is a negative
+    if (num == 0) {
+        isNeg = 1;
+        num = -num;
+    }
+
+    if (num == 0) {
+        buf[i++] = 0;
+    } else {
+        // Convert digits to chars in reverse order
+        while (num > 0) {
+            int c = num & 0xF;
+            buf[i++]= HEX_STR(c);
+            num = num >> 4;
         }
     }
 

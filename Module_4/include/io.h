@@ -35,6 +35,8 @@
 #define AUX_MU_BAUD(baud) \
     ((AUX_UART_CLOCK / (8 * baud)) - 1)  
 
+#define HEX_STR(h) ((h < 10) ? '0' + h : 'A' + h - 10)
+
 void uart_init();
 void uart_update();
 
@@ -47,6 +49,7 @@ void uart_writeByteBlocking(unsigned char ch);
 void uart_writeText(char *text);
 void uart_loadOutputBuffer();
 void uart_writeInt(int num);
+void uart_writeHex(int num);
 
 // Reading functions
 unsigned char uart_readByte();

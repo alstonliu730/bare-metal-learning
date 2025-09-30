@@ -1,8 +1,9 @@
-#include "io.h"
-#include "fb.h"
-#include "common.h"
+#include "../include/io.h"
+#include "../include/fb.h"
+#include "../include/timer.h"
+#include "../include/common.h"
 
-static void __attribute__((noinline)) start() {
+static void __attribute__((noinline)) reset() {
     // Zero the .bss section
     extern unsigned int __bss_start, __bss_end;
 
@@ -25,8 +26,31 @@ uint32_t get_daif() {
     return daif;  // Bit 7 = IRQ mask
 }
 
+uint32_t get_timer32() {
+    return mmio_read(SYS_TIMER_CLO);
+}
+
+uint64_t get_timer64() {
+    uint64_t timer_hi = mmio_read(SYS_TIMER_CHI);
+    uint32_t res = mmio_read(SYS_TIMER_CLO);
+
+    res |= (timer_hi << 32);
+    return res;
+}
+
+void wait(int i) {
+    uint32_t start = get_timer32();
+    uint32_t curr = get_timer32();
+    while (curr - start < i) {
+        // debugging
+        uart_writeHex(curr);
+        uart_writeText("\n");
+        curr = get_timer32();
+    }
+}
+
 void main() {
-    start();
+    reset();
     led_init();
     led_on();
     delay(1000);
@@ -55,6 +79,8 @@ void main() {
     uart_writeText("Current DAIF: ");
     uart_writeInt(curr_daif);
     uart_writeText("\n");
+
+    wait(100000);
 
     while(1) {
         uart_update();

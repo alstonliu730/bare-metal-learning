@@ -1,9 +1,11 @@
+#include "sysreg.h"
+
 .section ".text.boot" // Make sure linker puts this at the start of kernel
 
-.global _start // Execution starts
 .global __bss_start
 .global __bss_end
 
+.global _start // Execution starts
 _start:
     // Check Processor ID is 0 (main core), else hang
     mrs     x0, MPIDR_EL1       // mpidr_el1 = Multiprocessor ID Register
@@ -42,6 +44,8 @@ _start_el2:
     // Setup vector table base for EL1 (Not implemented yet)
     // adr  x0, vector_table
     // msr  VBAR_EL1, x0
+
+    // Clears the 
     msr     VMPIDR_EL2, xzr
     msr     VPIDR_EL2, xzr
 
@@ -64,7 +68,7 @@ start_el1:  // On main core
 
 4:  
     // Unmask all interrupts
-    msr     DAIFClr, #0xF
+    // msr     DAIFClr, #0xF
     // Jump to our main() routine in C (make sure it doesn't return)
     bl      main
     // in case it does return, halt the master core too
