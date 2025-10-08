@@ -2,20 +2,21 @@
 
 .section ".text.boot" // Make sure linker puts this at the start of kernel
 
-.global __bss_start
-.global __bss_end
+.globl __bss_start
+.globl __bss_end
+.globl err_hang
 
-.global _start // Execution starts
+.globl _start // Execution starts
 _start:
     // Check Processor ID is 0 (main core), else hang
     mrs     x0, MPIDR_EL1       // mpidr_el1 = Multiprocessor ID Register
     and     x0, x0, #3
     cbz     x0, _start_el2
 
-1:  
-    // Not on main core, infinite wait loop
+err_hang:  
+    // Infinite wait loop (All other cores are left to hang)
     wfe                         // wait for event instruction - power efficient
-    b       1b
+    b       err_hang
 
 _start_el2:
     // Configure EL1 execution state
@@ -28,8 +29,8 @@ _start_el2:
 
     // Configure the Hyperviser Configuration Register
     mov     x0, #(1 << 31)      // RW=1  
-    orr     x0, x0, #(1 << 4)   // IMO=1
-    orr     x0, x0, #(1 << 5)   // FMO=1
+    // orr     x0, x0, #(1 << 4)   // IMO=1
+    // orr     x0, x0, #(1 << 5)   // FMO=1
     msr     HCR_EL2, x0
 
     // Configure the System Control Register for EL1
@@ -42,10 +43,10 @@ _start_el2:
     msr     CNTHCTL_EL2, x0
 
     // Setup vector table base for EL1 (Not implemented yet)
-    // adr  x0, vector_table
-    // msr  VBAR_EL1, x0
+    adr     x0, vector_table
+    msr     VBAR_EL1, x0
 
-    // Clears the 
+    // Clears the Virtualization Processor ID Registers allowing our own virtual CPU ID info
     msr     VMPIDR_EL2, xzr
     msr     VPIDR_EL2, xzr
 
@@ -68,8 +69,8 @@ start_el1:  // On main core
 
 4:  
     // Unmask all interrupts
-    // msr     DAIFClr, #0xF
+    bl      irq_enable
     // Jump to our main() routine in C (make sure it doesn't return)
     bl      main
     // in case it does return, halt the master core too
-    b       1b
+    b       err_hang

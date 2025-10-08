@@ -6,4 +6,10 @@ To help understand what these are, we can use an analogy. In a company, we have 
 
 In the Raspberry Pi 4B, the default exception level would be *EL3* when it boots in. There's a default Raspberry Pi stub that brings the processor down from EL3 to EL2. However, we do not need EL2 to execute our task so we need to drop the exception level down to *EL1*. To do that we need to add a bit of code to the boot sequence code. In each level, they have their own stack pointer, saved program status, and exception link registers. The stack pointer is the location of the top of the stack memory in RAM. For example, `SP_EL0` is pointing the top of the stack in EL0 but `SP_EL1` points the a different part of the stack for Exception Level 1 execution. The saved program status is used to save the location of the instruction when an exception is taken to a certain level.
 
-## Generic Interrupt Controller
+## Interrupts
+
+### Timer Interrupts
+To implement the System Timer, we first consult the BCM2711 ARM Peripheral Manual that gives us info on the registers. We can see that there's **four 32-bit timer channels** & **one 64-bit free running counter**. Each channel has a compare register to compare the 32 least significant bits of the free runing counter. When the compare value and the coutner value match, the timer will signal the interrupt controller to read the compare register and add the appropriate offset for the next timer tick.
+
+![System Timer Overview and Registers](assets/sys_timer_info.png)
+

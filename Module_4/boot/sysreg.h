@@ -1,5 +1,6 @@
 #ifndef SYSREG_H
 #define SYSREG_H
 
-#define SCR_EL1_VALUE 0x0 // Placeholder
+#define SCR_RESERVED
+#define SCR_VALUE ()
 #endif /*SYSREG_H*/

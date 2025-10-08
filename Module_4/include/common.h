@@ -16,5 +16,6 @@ typedef unsigned long      size_t;
 typedef unsigned long      uintptr_t;  // Pointer-sized integer
 
 #define NULL ((void*)0)
+#define PERIPHERAL_BASE         0xFE000000
 
 #endif /* COMMON_H */

@@ -1,7 +1,8 @@
 #ifndef IO_H
 #define IO_H
 
-#define PERIPHERAL_BASE         0xFE000000
+#include <common.h>
+
 #define GPIO_BASE               (PERIPHERAL_BASE + 0x200000)
 #define GPFSEL0                 (GPIO_BASE + 0x00)
 #define GPFSEL1                 (GPIO_BASE + 0x04)
@@ -40,20 +41,21 @@
 void uart_init();
 void uart_update();
 
-void mmio_write(long reg, unsigned int value);
-unsigned int mmio_read(long reg);
+void mmio_write(long reg, uint32_t value);
+uint32_t mmio_read(long reg);
+
 // Writing function
-unsigned int uart_writeByteReady();
+uint32_t uart_writeByteReady();
 void uart_writeByte(unsigned char ch);
 void uart_writeByteBlocking(unsigned char ch);
 void uart_writeText(char *text);
 void uart_loadOutputBuffer();
 void uart_writeInt(int num);
-void uart_writeHex(int num);
+void uart_writeHex(long num);
 
 // Reading functions
 unsigned char uart_readByte();
-unsigned int uart_readByteReady();
+uint32_t uart_readByteReady();
 
 // Debugging functions
 void led_init();
@@ -64,7 +66,7 @@ void debug_buffer_contents();
 extern unsigned char uart_output_buffer[UART_MAX_QUEUE];
 
 // Suspend tasks for n amount of cycles
-static inline void delay(volatile unsigned int count) {
+static inline void delay(volatile uint32_t count) {
     while (count--) asm("nop");
 }
 

@@ -1,13 +1,11 @@
 #ifndef TIMER_H
 #define TIMER_H
 
-#define SYS_TIMER_BASE  0xFE003000
-#define SYS_TIMER_CS    (SYS_TIMER_BASE + 0x00)
-#define SYS_TIMER_CLO   (SYS_TIMER_BASE + 0x04)
-#define SYS_TIMER_CHI   (SYS_TIMER_BASE + 0x08)
-#define SYS_TIMER_C0    (SYS_TIMER_BASE + 0x0C)
-#define SYS_TIMER_C1    (SYS_TIMER_BASE + 0x10)
-#define SYS_TIMER_C2    (SYS_TIMER_BASE + 0x14)
-#define SYS_TIMER_C3    (SYS_TIMER_BASE + 0x18)
+#include <common.h>
+
+uint32_t get_timer32();
+uint64_t get_timer64();
+void wait(int i);
+void timer_init();
 
 #endif /* TIMER_H */

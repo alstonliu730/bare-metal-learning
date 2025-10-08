@@ -1,8 +1,8 @@
-#include "../include/io.h"
-#include "../include/mb.h"
-#include "../include/fb.h"
-#include "../include/font.h"
-#include "../include/common.h"
+#include <io.h>
+#include <mb.h>
+#include <fb.h>
+#include <font.h>
+#include <common.h>
 
 unsigned int width, height, fb_pitch, isrgb, fb_size;
 unsigned char *fb_addr;

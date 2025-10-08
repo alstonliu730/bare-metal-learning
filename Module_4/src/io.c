@@ -1,11 +1,12 @@
-#include "../include/io.h"
+#include <io.h>
+#include <common.h>
 
 #define PULL_NONE 0
 #define PULL_UP   1
 #define PULL_DOWN 2
 
 #define INT_BUF_SIZE 10
-#define HEX_BUF_SIZE 12
+#define HEX_BUF_SIZE 18
 
 // Write a value to a memory-mapped I/O register
 void mmio_write(long reg, unsigned int value) {
@@ -13,14 +14,14 @@ void mmio_write(long reg, unsigned int value) {
 }
 
 // Read a value from a memory-mapped I/O register
-unsigned int mmio_read(long reg) {
+uint32_t mmio_read(long reg) {
     return *(volatile unsigned int *)reg;
 }
 
 /**
  * Set the function of a GPIO pin.
  */
-unsigned int gpio_call(unsigned int pin, unsigned int value,
+uint32_t gpio_call(unsigned int pin, unsigned int value,
                      unsigned int base, unsigned int field_size, unsigned int field_max) {
     unsigned int field_mask = (1 << field_size) - 1;
     
@@ -41,23 +42,23 @@ unsigned int gpio_call(unsigned int pin, unsigned int value,
 
 // ------------ GPIO functions ------------
 // Enabling the GPIO pin to a high state
-unsigned int gpio_set (unsigned int pin, unsigned int value) {
+uint32_t gpio_set (unsigned int pin, unsigned int value) {
     return gpio_call(pin, value, GPSET0, 1, GPIO_MAX_PIN);
 }
 
 // Disabling the GPIO pin to a low state
-unsigned int gpio_clear (unsigned int pin, unsigned int value) {
+uint32_t gpio_clear (unsigned int pin, unsigned int value) {
     return gpio_call(pin, value, GPCLR0, 1, GPIO_MAX_PIN);
 }
 
 // Set the pull-up/pull-down resistor for the GPIO pin
-unsigned int gpio_pull (unsigned int pin, unsigned int value) {
+uint32_t gpio_pull (unsigned int pin, unsigned int value) {
     return gpio_call(pin, value, GPPUPPDN0, 2, GPIO_MAX_PIN);
 }
 
 // Defines the GPIO pin's operation mode. 
 // See Section 5.3 in BCM2711 ARM Peripherals
-unsigned int gpio_function (unsigned int pin, unsigned int value) {
+uint32_t gpio_function (unsigned int pin, unsigned int value) {
     return gpio_call(pin, value, GPFSEL0, 3, GPIO_MAX_PIN);
 }
 
@@ -70,8 +71,8 @@ void gpio_useAlt5 (unsigned int pin) {
 // ------------ UART functions ------------
 // Create UART output buffer
 unsigned char uart_output_buffer[UART_MAX_QUEUE];
-unsigned int uart_output_buffer_write;
-unsigned int uart_output_buffer_read;
+uint32_t uart_output_buffer_write;
+uint32_t uart_output_buffer_read;
 
 // UART register addresses
 /**
@@ -99,14 +100,14 @@ void uart_init() {
 /**
  * Checks if the UART FIFO buffer is empty.
  */
-unsigned int uart_writeByteReady() {
+uint32_t uart_writeByteReady() {
     return mmio_read(AUX_MU_LSR_REG) & 0x20; // Check if the transmitter is ready
 }
 
 /**
  * Checks if the UART FIFO buffer is ready to read.
  */
-unsigned int uart_readByteReady() {
+uint32_t uart_readByteReady() {
     return mmio_read(AUX_MU_LSR_REG) & 0x01;
 }
 
@@ -121,7 +122,7 @@ void uart_writeByteBlocking(unsigned char ch) {
 /**
  * Return if the buffer is empty.
  */
-unsigned int uart_bufferEmpty() {
+uint32_t uart_bufferEmpty() {
     return uart_output_buffer_write == uart_output_buffer_read;
 }
 
@@ -188,7 +189,7 @@ void uart_writeInt(int num) {
 /**
  * Prints out the integer to UART in hexadecimal format.
  */
-void uart_writeHex(int num) {
+void uart_writeHex(long num) {
     char buf[HEX_BUF_SIZE];
     int i = 0;
     int isNeg = 0;
@@ -274,6 +275,7 @@ void debug_buffer_contents() {
     uart_writeByteBlocking('\n');
 }
 
+// LED Functions
 void led_init() {
     gpio_function(42, GPIO_FUNCTION_OUT); // Built-in LED (if available)
 }

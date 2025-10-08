@@ -1,7 +1,8 @@
-#include "../include/io.h"
-#include "../include/fb.h"
-#include "../include/timer.h"
-#include "../include/common.h"
+#include <io.h>
+#include <fb.h>
+#include <irq.h>
+#include <timer.h>
+#include <common.h>
 
 static void __attribute__((noinline)) reset() {
     // Zero the .bss section
@@ -26,63 +27,64 @@ uint32_t get_daif() {
     return daif;  // Bit 7 = IRQ mask
 }
 
-uint32_t get_timer32() {
-    return mmio_read(SYS_TIMER_CLO);
-}
-
-uint64_t get_timer64() {
-    uint64_t timer_hi = mmio_read(SYS_TIMER_CHI);
-    uint32_t res = mmio_read(SYS_TIMER_CLO);
-
-    res |= (timer_hi << 32);
-    return res;
-}
-
-void wait(int i) {
-    uint32_t start = get_timer32();
-    uint32_t curr = get_timer32();
-    while (curr - start < i) {
-        // debugging
-        uart_writeHex(curr);
-        uart_writeText("\n");
-        curr = get_timer32();
-    }
-}
-
 void main() {
     reset();
     led_init();
-    led_on();
-    delay(1000);
-    led_off();
 
     led_on();
     uart_init();
     uart_writeText("UART Initialized\n");
-    delay(1000);
+    delay(10000);
     led_off();
-    delay(1000);
 
     led_on();
     fb_init();
-    delay(1000);
+    delay(10000);
     led_off();
     uart_writeText("Frame Buffer Initialized\n");
 
     uint32_t curr_el = get_el();
     uint32_t curr_daif = get_daif();
 
-    uart_writeText("Current El: ");
+    uart_writeText("Running at EL");
     uart_writeInt(curr_el);
     uart_writeText("\n");
 
-    uart_writeText("Current DAIF: ");
-    uart_writeInt(curr_daif);
+    uart_writeText("Current DAIF: 0x");
+    uart_writeHex(curr_daif);
     uart_writeText("\n");
 
-    wait(100000);
+    uint64_t vbar;
+    asm volatile("mrs %0, VBAR_EL1" : "=r"(vbar));
+    uart_writeText("VBAR_EL1: 0x");
+    uart_writeHex(vbar);
+    uart_writeText("\n");
+
+    uint64_t spsel;
+    asm volatile("mrs %0, SPSel" : "=r"(spsel));
+    uart_writeText("SPSel: ");
+    uart_writeHex(spsel);
+    uart_writeText(" (should be 1 for SP_ELx)\n");
+
+    timer_init();
+    
+    uart_writeText("VC_IRQ_REGS: 0x");
+    uint32_t VC_IRQ_EN = mmio_read(IRQ0_REGS->IRQ0_ENABLE_0);
+    uart_writeHex(VC_IRQ_EN);
+    uart_writeText("\nWaiting for interrupts...\n");
 
     while(1) {
+        uint32_t cs = mmio_read(SYS_TIMER_CS);
+        if (cs & 0x2) {  // Timer C1 matched
+            uart_writeText("Timer C1 matched (polled)! CS: 0x");
+            uart_writeHex(cs);
+            uart_writeText("\n");
+            
+            // Clear and reset
+            mmio_write(SYS_TIMER_CS, 0x2);
+            uint32_t current = mmio_read(SYS_TIMER_CLO);
+            mmio_write(SYS_TIMER_C1, current + 1000000);
+        }
         uart_update();
     }
 }
