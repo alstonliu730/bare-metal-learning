@@ -81,9 +81,34 @@
     mrs x2, elr_el1
     mrs x3, spsr_el1   
 
-    bl exception_report
-    b err_hang
+    bl  exception_report
+    kernel_exit
+    // b err_hang
 .endm
+
+// Exception Vector Table
+.align 11
+.globl vector_table
+vector_table:
+    ventry sync_invalid_el1t
+    ventry irq_invalid_el1t
+    ventry fiq_invalid_el1t
+    ventry error_invalid_el1t
+
+    ventry sync_invalid_el1h
+    ventry handle_irq_el1h
+    ventry fiq_invalid_el1h
+    ventry error_invalid_el1h
+
+    ventry sync_invalid_el0_64
+    ventry irq_invalid_el0_64
+    ventry fiq_invalid_el0_64
+    ventry error_invalid_el0_64
+
+    ventry sync_invalid_el0_32
+    ventry irq_invalid_el0_32
+    ventry fiq_invalid_el0_32
+    ventry error_invalid_el0_32
 
 // IRQ Routing Labels
 sync_invalid_el1t:
@@ -123,30 +148,6 @@ fiq_invalid_el0_32:
     handle_invalid_entry FIQ_INVALID_EL0_32
 error_invalid_el0_32:
     handle_invalid_entry ERROR_INVALID_EL0_32
-
-// Exception Vector Table
-.globl vector_table
-.align 11
-vector_table:
-    ventry sync_invalid_el1t
-    ventry irq_invalid_el1t
-    ventry fiq_invalid_el1t
-    ventry error_invalid_el1t
-
-    ventry sync_invalid_el1h
-    ventry handle_irq_el1h
-    ventry fiq_invalid_el1h
-    ventry error_invalid_el1h
-
-    ventry sync_invalid_el0_64
-    ventry irq_invalid_el0_64
-    ventry fiq_invalid_el0_64
-    ventry error_invalid_el0_64
-
-    ventry sync_invalid_el0_32
-    ventry irq_invalid_el0_32
-    ventry fiq_invalid_el0_32
-    ventry error_invalid_el0_32
 
 .globl irq_enable
 irq_enable:

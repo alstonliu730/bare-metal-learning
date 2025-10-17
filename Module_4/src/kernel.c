@@ -1,6 +1,7 @@
 #include <io.h>
 #include <fb.h>
 #include <irq.h>
+#include <gic.h>
 #include <timer.h>
 #include <common.h>
 
@@ -68,23 +69,16 @@ void main() {
 
     timer_init();
     
-    uart_writeText("VC_IRQ_REGS: 0x");
-    uint32_t VC_IRQ_EN = mmio_read(IRQ0_REGS->IRQ0_ENABLE_0);
-    uart_writeHex(VC_IRQ_EN);
+    uart_writeText("IRQ0_ENABLE: 0x");
+    uint32_t IRQ0_ENABLE = mmio_read(IRQ0_REGS->IRQ0_ENABLE_0);
+    uart_writeHex(IRQ0_ENABLE);
     uart_writeText("\nWaiting for interrupts...\n");
 
+    uart_writeText("Initializing GIC...\n");
+    gic_init();
+
+    timer_wait(1000);
     while(1) {
-        uint32_t cs = mmio_read(SYS_TIMER_CS);
-        if (cs & 0x2) {  // Timer C1 matched
-            uart_writeText("Timer C1 matched (polled)! CS: 0x");
-            uart_writeHex(cs);
-            uart_writeText("\n");
-            
-            // Clear and reset
-            mmio_write(SYS_TIMER_CS, 0x2);
-            uint32_t current = mmio_read(SYS_TIMER_CLO);
-            mmio_write(SYS_TIMER_C1, current + 1000000);
-        }
         uart_update();
     }
 }

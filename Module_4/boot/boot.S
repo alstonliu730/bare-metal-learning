@@ -28,14 +28,16 @@ _start_el2:
     msr     ELR_EL2, x0
 
     // Configure the Hyperviser Configuration Register
-    mov     x0, #(1 << 31)      // RW=1  
-    // orr     x0, x0, #(1 << 4)   // IMO=1
-    // orr     x0, x0, #(1 << 5)   // FMO=1
+    ldr     x0, =HCR_RW
     msr     HCR_EL2, x0
 
     // Configure the System Control Register for EL1
-    mov     x0, #0x0            // Start with MMU disabled
+    ldr     x0, =SCTLR_VALUE_MMU_DISABLED
     msr     SCTLR_EL1, x0
+
+    // Configure the Secure Status of the lower exception levels
+    // ldr     x0, =SCR_VALUE
+    // msr     SCR_EL3, x0
 
     // Configure Counter-Timer Hypervisor Control
     mrs     x0, CNTHCTL_EL2     // Enables EL1 physical timers
@@ -43,12 +45,8 @@ _start_el2:
     msr     CNTHCTL_EL2, x0
 
     // Setup vector table base for EL1 (Not implemented yet)
-    adr     x0, vector_table
+    ldr     x0, =vector_table
     msr     VBAR_EL1, x0
-
-    // Clears the Virtualization Processor ID Registers allowing our own virtual CPU ID info
-    msr     VMPIDR_EL2, xzr
-    msr     VPIDR_EL2, xzr
 
     eret
 
@@ -68,7 +66,6 @@ start_el1:  // On main core
     b       3b                  // Loop
 
 4:  
-    // Unmask all interrupts
     bl      irq_enable
     // Jump to our main() routine in C (make sure it doesn't return)
     bl      main
