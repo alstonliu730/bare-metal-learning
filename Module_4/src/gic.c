@@ -1,10 +1,11 @@
 #include <gic.h>
-#include <io.h>
+#include <gpio.h>
 #include <irq.h>
+#include <mini_uart.h>
 
-#define ENABLE_GRP 0x03
+#define ENABLE_GRP  0x03
 #define P_MASK      0xFF
-#define DISABLE 0
+#define DISABLE     0x00
 
 /**
  * Enable the Distributer Controller. 
@@ -42,13 +43,6 @@ void enable_interrupt(uint32_t irq) {
     uint32_t n = irq / 32;
     uint32_t offset = irq % 32;
     long enableReg = GICD_SET_ENABLER + (4 * n);
-    
-    // DEBUGGING
-    uart_writeText("Enabling IRQ #");
-    uart_writeInt(irq);
-    uart_writeText(" at 0x");
-    uart_writeHex(enableReg);
-    uart_writeText(".\n");
 
     // Enable interrupt id in the distributor
     mmio_write(enableReg, (1 << offset));
@@ -64,16 +58,6 @@ void set_irq_priority(uint32_t irq, uint32_t priority) {
     long priorityReg = GICD_PRIORITY + (4 *n);
 
     uint32_t val = mmio_read(priorityReg) | (priority << offset);
-    // DEBUGGING
-    uart_writeText("Setting IRQ #");
-    uart_writeInt(irq);
-    uart_writeText(" priority at 0x");
-    uart_writeHex(priorityReg);
-    uart_writeText(" with the value of 0x");
-    uart_writeHex(priority);
-    uart_writeText(", reg val: 0x");
-    uart_writeHex(val);
-    uart_writeText(".\n");
 
     // Setting priority for the given interrupt
     mmio_write(priorityReg, val);
@@ -95,15 +79,6 @@ void assign_target(uint32_t irq) {
 
     uint32_t val = mmio_read(target) | (1 << bit_shift);
 
-    // DEBUGGING
-    uart_writeText("Setting IRQ #");
-    uart_writeInt(irq);
-    uart_writeText(" target at 0x");
-    uart_writeHex(target);
-    uart_writeText(" with the value of 0x");
-    uart_writeHex(val);
-    uart_writeText(".\n");
-
     // Setting target to Core 0
     mmio_write(target, val);
 }
@@ -112,17 +87,12 @@ void set_configuration(uint32_t irq, gicd_cfg_flags_t flag) {
     uint32_t reg_num = irq / 16;
     uint32_t bit_pos = (irq % 16) * 2;
     uint32_t cfg_addr = GICD_ICFGR + (4 * reg_num);
-
-    uint32_t val = mmio_read(cfg_addr) | (flag << bit_pos);
-
-    // DEBUGGING
-    uart_writeText("Configuring IRQ #");
-    uart_writeInt(irq);
-    uart_writeText(" target at 0x");
-    uart_writeHex(cfg_addr);
-    uart_writeText(" with the value of 0x");
-    uart_writeHex(val);
-    uart_writeText(".\n");
+    uint32_t val;
+    if (flag == level_sensitive) {
+        val = mmio_read(cfg_addr) & ~(1 << bit_pos);
+    } else {
+        val = mmio_read(cfg_addr) | (flag << bit_pos);
+    }
 
     mmio_write(cfg_addr, val);
 }
@@ -152,5 +122,9 @@ void gic_init() {
     
     gic_cpu_init();
 
+    // Enable Timer Interrupts
     setup_interrupt(SYS_TIMER_IRQ_1, 0xA0, edge_triggered);
+
+    // Enable UART Interrupts
+    setup_interrupt(PL011_UART_IRQ, 0x90, level_sensitive);
 }   

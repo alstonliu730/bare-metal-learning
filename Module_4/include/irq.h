@@ -2,7 +2,7 @@
 #define IRQ_H
 
 #include <common.h>
-
+#define PACTL_CS            0xFE204E00
 #define ARMC_BASE           (PERIPHERAL_BASE + 0xB000)
 
 // IRQ0 Registers (Legacy)
@@ -26,14 +26,17 @@ typedef struct {
 #define IRQ_STATUS1         (ARMC_BASE + 0x234)
 #define IRQ_STATUS2         (ARMC_BASE + 0x238)
 
-// Interrupt Status Mask
-#define SYS_TIMER_IRQ_0     0x60
-#define SYS_TIMER_IRQ_1     0x61
-#define SYS_TIMER_IRQ_2     0x62
-#define SYS_TIMER_IRQ_3     0x63
+// Interrupt IRQ IDs
+#define VC_IRQ_BASE_ID         0x60
+#define SYS_TIMER_IRQ_0     (VC_IRQ_BASE_ID + 0x00)
+#define SYS_TIMER_IRQ_1     (VC_IRQ_BASE_ID + 0x01)
+#define SYS_TIMER_IRQ_2     (VC_IRQ_BASE_ID + 0x02)
+#define SYS_TIMER_IRQ_3     (VC_IRQ_BASE_ID + 0x03)
+
+#define PL011_UART_IRQ      (VC_IRQ_BASE_ID + 0x39)
 
 // Functions
-void exception_report(uint64_t type, uint64_t esr_reg, uint64_t elr ,uint64_t spsr);
+void exception_report(uint64_t type, uint64_t esr_reg, uint64_t elr, uint64_t spsr);
 void irq_el1h_handler();
 
 #endif /* IRQ_H */

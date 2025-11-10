@@ -56,6 +56,7 @@ void enable_interrupt(uint32_t irq);
 void set_irq_priority(uint32_t irq, uint32_t priority);
 void assign_target(uint32_t irq);
 void clear_interrupt(uint32_t irq);
+void setup_interrupt(uint32_t irq, uint32_t priority, gicd_cfg_flags_t flag);
 
 void gic_init();
 

@@ -14,12 +14,11 @@ uart_2ndstage=1
 enable_uart=1
 
 # Set core minimum frequency
-core_freq=250
 core_freq_min=250
+# core_freq_min=500
 
 # Automatically load overlays for detected DSI displays
-display_auto_detect=1
-
+# display_auto_detect=1
 # Basic display settings
 hdmi_force_hotplug=1
 disable_overscan=1

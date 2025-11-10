@@ -1,6 +1,7 @@
 #include <timer.h>
 #include <irq.h>
-#include <io.h>
+#include <gpio.h>
+#include <mini_uart.h>
 #include <gic.h>
 
 uint32_t get_timer32() {
@@ -17,9 +18,9 @@ uint64_t get_timer64() {
 
 void timer_wait(int ms) {
     uint32_t start = get_timer32();
-    uint32_t curr = get_timer32();
+    uint32_t curr = start;
     
-    while (curr - start < ms) {
+    while (curr - start < (ms * 1000)) {
         curr = get_timer32();
     }
 }
@@ -33,13 +34,14 @@ void timer_init() {
     mmio_write(SYS_TIMER_C1, curr + CLOCK_HZ);
 
     mmio_write(IRQ0_REGS->IRQ0_ENABLE_0, 0x2);  // enable timer 1 bit
-
-    uart_writeText("Timer initialized\n");
 }
 
+/**
+ * Handle Timer 1 interrupt by setting a delay of 1 second.
+ */
 void handle_timer1() {
-    // Handle Timer Tick
-    uart_writeText("Timer Fired!\n");
+    // Toggle Led
+    // led_toggle();
 
     // Set Next Compare Value
     uint32_t curr = mmio_read(SYS_TIMER_CLO);

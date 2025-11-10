@@ -1,5 +1,7 @@
 #include <mb.h>
-#include <io.h>
+#include <uart.h>
+#include <gpio.h>
+#include <mini_uart.h>
 
 // The buffer must be 16-byte aligned as only the upper 28 bits of the address can be passed via the mailbox
 volatile unsigned int __attribute__((aligned(16))) mbox[36];
@@ -22,7 +24,7 @@ unsigned int mbox_call(unsigned char ch) {
 
     while (MBOX_STATUS_FULL) {
         // Wait until the mailbox is not full
-        uart_writeText("MBOX FULL\n");
+        // uart_writeText("MBOX FULL\n");
     }
 
     // Write the address to the mailbox
@@ -71,3 +73,15 @@ void mbox_write(unsigned char ch, unsigned int data) {
     return;
 }
 
+/**
+ * Write to the mini UART given the number of fields to print out.
+ */
+void debug_mbox(int nSize) {
+    // mUart_writeText("Flushing mbox values: \n");
+    // for(int i = 0; i < nSize; i++) {
+    //     mUart_writeInt(i);
+    //     mUart_writeText(": 0x");
+    //     mUart_writeHex(mbox[i]);
+    //     mUart_writeText("\n");
+    // }
+}

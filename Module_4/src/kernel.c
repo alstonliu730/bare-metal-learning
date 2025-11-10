@@ -1,5 +1,7 @@
-#include <io.h>
+#include <gpio.h>
 #include <fb.h>
+#include <uart.h>
+#include <mini_uart.h>
 #include <irq.h>
 #include <gic.h>
 #include <timer.h>
@@ -31,54 +33,33 @@ uint32_t get_daif() {
 void main() {
     reset();
     led_init();
-
-    led_on();
-    uart_init();
-    uart_writeText("UART Initialized\n");
-    delay(10000);
-    led_off();
-
-    led_on();
-    fb_init();
-    delay(10000);
-    led_off();
-    uart_writeText("Frame Buffer Initialized\n");
-
-    uint32_t curr_el = get_el();
-    uint32_t curr_daif = get_daif();
-
-    uart_writeText("Running at EL");
-    uart_writeInt(curr_el);
-    uart_writeText("\n");
-
-    uart_writeText("Current DAIF: 0x");
-    uart_writeHex(curr_daif);
-    uart_writeText("\n");
-
-    uint64_t vbar;
-    asm volatile("mrs %0, VBAR_EL1" : "=r"(vbar));
-    uart_writeText("VBAR_EL1: 0x");
-    uart_writeHex(vbar);
-    uart_writeText("\n");
-
-    uint64_t spsel;
-    asm volatile("mrs %0, SPSel" : "=r"(spsel));
-    uart_writeText("SPSel: ");
-    uart_writeHex(spsel);
-    uart_writeText(" (should be 1 for SP_ELx)\n");
-
-    timer_init();
     
-    uart_writeText("IRQ0_ENABLE: 0x");
-    uint32_t IRQ0_ENABLE = mmio_read(IRQ0_REGS->IRQ0_ENABLE_0);
-    uart_writeHex(IRQ0_ENABLE);
-    uart_writeText("\nWaiting for interrupts...\n");
-
-    uart_writeText("Initializing GIC...\n");
+    // GIC Initialization
+    led_on();
     gic_init();
+    delay(1000);
+    led_off();
 
+    // Timer Initialization
+    timer_init();
+
+    // UART 0 Initialization
+    led_on();
+    uart0_init();
     timer_wait(1000);
+
+    uart0_writeText("Hello\n");
+    uart0_writeText("What is going on?\n");
+    
+    timer_wait(1000);
+    led_off();
+
+    // led_on();
+    // fb_init();
+    // delay(10000);
+    // led_off();
+    // uart_writeText("Frame Buffer Initialized\n");
     while(1) {
-        uart_update();
+        
     }
 }

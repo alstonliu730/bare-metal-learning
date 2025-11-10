@@ -1,8 +1,9 @@
-#include <io.h>
+#include <gpio.h>
 #include <mb.h>
 #include <fb.h>
 #include <font.h>
 #include <common.h>
+#include <uart.h>
 
 unsigned int width, height, fb_pitch, isrgb, fb_size;
 unsigned char *fb_addr;
@@ -57,10 +58,10 @@ void fb_init() {
 
     mbox[34] = MBOX_TAG_LAST;
 
-    if (mbox_call(MBOX_CH_PROP) && mbox[1] == 0x80000000) {
-        uart_writeText("Frame Buffer Initialization Success\n");
+    if (mbox_call(MBOX_CH_PROP) && mbox[1] == MBOX_SUCCESS) {
+        //uart_writeText("Frame Buffer Initialization Success\n");
         // Check individual tag responses
-        if ((mbox[27] & 0x80000000) && mbox[28] != 0) {
+        if ((mbox[27] & MBOX_SUCCESS) && mbox[28] != 0) {
             fb_addr = (unsigned char *)((uintptr_t)(mbox[28] & 0x3FFFFFFF));
             fb_size = mbox[29];
             fb_pitch = mbox[33];
@@ -69,7 +70,7 @@ void fb_init() {
             isrgb = mbox[24];
         }
     } else {
-        uart_writeText("Frame Buffer Init Failed\n");
+        //uart_writeText("Frame Buffer Init Failed\n");
     }
 }
 
