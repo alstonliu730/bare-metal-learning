@@ -3,7 +3,6 @@
 #include <gpio.h>
 #include <timer.h>
 #include <uart.h>
-#include <mini_uart.h>
 
 #define ENABLE 1
 #define DISABLE 0

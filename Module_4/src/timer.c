@@ -1,7 +1,6 @@
 #include <timer.h>
 #include <irq.h>
 #include <gpio.h>
-#include <mini_uart.h>
 #include <gic.h>
 
 uint32_t get_timer32() {

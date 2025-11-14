@@ -1,7 +1,6 @@
 #include <gpio.h>
 #include <fb.h>
 #include <uart.h>
-#include <mini_uart.h>
 #include <irq.h>
 #include <gic.h>
 #include <timer.h>

@@ -1,7 +1,6 @@
 #include <gic.h>
 #include <gpio.h>
 #include <irq.h>
-#include <mini_uart.h>
 
 #define ENABLE_GRP  0x03
 #define P_MASK      0xFF
