@@ -8,9 +8,76 @@
 #define VC_UART_IRQ             0x39
 
 // Create UART output buffer
-static unsigned char uart_output_buffer[UART_MAX_QUEUE];
-static uint32_t uart_output_buffer_write;
-static uint32_t uart_output_buffer_read;
+static volatile unsigned char uart_output_buffer[UART_MAX_QUEUE];
+static volatile uint32_t uart_output_buffer_write;
+static volatile uint32_t uart_output_buffer_read;
+typedef struct {
+    uint32_t total_written;
+    uint32_t total_transmitted;
+    uint32_t startTX_calls;
+    uint32_t interrupt_calls;
+    uint32_t buffer_write_pos;
+    uint32_t buffer_read_pos;
+} debug_info_t;
+
+// Create debugging information
+volatile debug_info_t debug_info __attribute__((section(".data"))) = {0};
+
+void dump_debug_info() {
+    uart_writeText("Written: 0x");
+    uart_writeHex(debug_info.total_written);
+    uart_writeText("\nTransmitted: 0x");
+    uart_writeHex(debug_info.total_transmitted);
+    uart_writeText("\nStartTX: 0x");
+    uart_writeHex(debug_info.startTX_calls);
+    uart_writeText("\nInterrupt Calls: 0x");
+    uart_writeHex(debug_info.interrupt_calls);
+    uart_writeText("\nBuffer Write Pos: 0x");
+    uart_writeHex(uart_output_buffer_write);
+    uart_writeText("\nBuffer Read Pos: 0x");
+    uart_writeHex(uart_output_buffer_read);
+}
+
+// Mailbox Request to get the UART Clock
+static uint32_t __attribute__((unused)) get_uart_clock() {
+    // Setting mbox array
+    mbox[0] = 8 * 4;        // Size in bytes
+    mbox[1] = MBOX_REQUEST; // Request Tag
+
+    mbox[2] = MBOX_TAG_GETCLK;  // Tag for get clock rate
+    mbox[3] = 8;                // tag size
+    mbox[4] = MBOX_REQUEST;
+    mbox[5] = MBOX_CLK_UART;    // clock id
+    mbox[6] = 0;
+    mbox[7] = MBOX_TAG_LAST;
+
+    if (mbox_call(MBOX_CH_PROP) && mbox[1] == MBOX_SUCCESS && mbox[5] == MBOX_CLK_UART) {
+        return mbox[6]; // returns the clock rate
+    } else {
+        return 0;
+    }
+}
+
+// Mailbox Request to set the UART clock to a given frequency
+static uint32_t set_uart_clk(uint32_t frq) {
+    // Setting mbox array
+    mbox[0] = 9*4;
+    mbox[1] = MBOX_REQUEST;
+
+    mbox[2] = MBOX_TAG_SETCLK;
+    mbox[3] = 12;
+    mbox[4] = MBOX_REQUEST;
+    mbox[5] = MBOX_CLK_UART;
+    mbox[6] = frq;
+    mbox[7] = 1;
+    mbox[8] = MBOX_TAG_LAST;
+
+    if (mbox_call(MBOX_CH_PROP) && mbox[1] == MBOX_SUCCESS && mbox[5] == MBOX_CLK_UART) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
 
 /**
  * Return if the buffer is empty.
@@ -19,11 +86,11 @@ uint32_t uart_bufferEmpty() {
     return uart_output_buffer_write == uart_output_buffer_read;
 }
 
-// ------------------------------------- Mini UART (UART 1) -------------------------------------
 /**
  * Starts the TX Transmission Interrupt
  */
-void uart0_startTX() {
+void uart_startTX() {
+    debug_info.startTX_calls++;
     if (uart_bufferEmpty()) {
         // Do nothing if the buffer is empty
         return;
@@ -34,6 +101,7 @@ void uart0_startTX() {
         while (!uart_bufferEmpty() && !UART0_TXFF) {
             mmio_write(UART0_DR, uart_output_buffer[uart_output_buffer_read]);
             uart_output_buffer_read = (uart_output_buffer_read + 1) % UART_MAX_QUEUE;
+            debug_info.total_transmitted++;
         }
     }
     
@@ -53,8 +121,11 @@ void uart_writeByte(unsigned char ch) {
     
     while (next_write == uart_output_buffer_read) {
         // Wait until there is space in the buffer
-        uart0_startTX();
+        uart_startTX();
     } 
+
+    // DEBUG
+    debug_info.total_written++;
 
     uart_output_buffer[uart_output_buffer_write] = ch;
     uart_output_buffer_write = next_write;
@@ -132,7 +203,7 @@ void uart_writeHex(long num) {
 /**
  * Write a string to the UART output while handling line endings.
  */
-void uart0_writeText(char *text) {
+void uart_writeText(char *text) {
     while (*text) {
         if (*text == '\n') {
             uart_writeByte('\r'); // Send carriage return before line feed
@@ -140,7 +211,10 @@ void uart0_writeText(char *text) {
         uart_writeByte(*text++); // Send character
     }
 
-    uart0_startTX();
+    // DEBUG
+    debug_info.buffer_read_pos = uart_output_buffer_read;
+    debug_info.buffer_write_pos = uart_output_buffer_write;
+    uart_startTX();
 }
 
 /* ------------------------------------- PL011 UART ------------------------------------- */
@@ -149,47 +223,6 @@ void uart0_writeText(char *text) {
 void set_fifo_level(fifo_level_t rx_sel, fifo_level_t tx_sel) {
     uint32_t val = ((rx_sel & 0x7) << 3) | (tx_sel & 0x7);
     mmio_write(UART0_IFLS, val);
-}
-
-// Mailbox Request to get the UART Clock
-uint32_t get_uart_clock() {
-    // Setting mbox array
-    mbox[0] = 8 * 4;        // Size in bytes
-    mbox[1] = MBOX_REQUEST; // Request Tag
-
-    mbox[2] = MBOX_TAG_GETCLK;  // Tag for get clock rate
-    mbox[3] = 8;                // tag size
-    mbox[4] = MBOX_REQUEST;
-    mbox[5] = MBOX_CLK_UART;    // clock id
-    mbox[6] = 0;
-    mbox[7] = MBOX_TAG_LAST;
-
-    if (mbox_call(MBOX_CH_PROP) && mbox[1] == MBOX_SUCCESS && mbox[5] == MBOX_CLK_UART) {
-        return mbox[6]; // returns the clock rate
-    } else {
-        return 0;
-    }
-}
-
-// Mailbox Request to set the UART clock to a given frequency
-static uint32_t set_uart_clk(uint32_t frq) {
-    // Setting mbox array
-    mbox[0] = 9*4;
-    mbox[1] = MBOX_REQUEST;
-
-    mbox[2] = MBOX_TAG_SETCLK;
-    mbox[3] = 12;
-    mbox[4] = MBOX_REQUEST;
-    mbox[5] = MBOX_CLK_UART;
-    mbox[6] = frq;
-    mbox[7] = 1;
-    mbox[8] = MBOX_TAG_LAST;
-
-    if (mbox_call(MBOX_CH_PROP) && mbox[1] == MBOX_SUCCESS && mbox[5] == MBOX_CLK_UART) {
-        return 1;
-    } else {
-        return 0;
-    }
 }
 
 /**
@@ -201,7 +234,7 @@ static uint32_t set_uart_clk(uint32_t frq) {
  *  - Enable FIFO and set word length
  *  - Enable TX, RX and UART
  */
-void uart0_init() {
+void uart_init() {
     // Disable UART first
     mmio_write(UART0_CR, 0);
     delay(1000);
@@ -219,8 +252,8 @@ void uart0_init() {
     set_uart_clk(DEFAULT_UART_CLK);
 
     // set the baud rate on the current clock
-    mmio_write(UART0_IBRD, 0x4); // write to the integer baud rate divisor (16-bit)
-    mmio_write(UART0_FBRD, 0);    // write to the fractional baud rate divisor (6-bit)
+    mmio_write(UART0_IBRD, 0x4);    // write to the integer baud rate divisor (16-bit)
+    mmio_write(UART0_FBRD, 0);      // write to the fractional baud rate divisor (6-bit)
     
     // Set GPIO function as alternate function 0
     gpio_useAlt0(14);
@@ -241,7 +274,7 @@ void uart0_init() {
 /**
  * When the IRQ line is asserted for the UART this handles it for all UART.
  */
-void handle_pl011_uart() {
+void uart_handler() {
     // Check which IRQ was set (reading bits 16 - 20)
     uint32_t uart_id = mmio_read(PACTL_CS) & (0x1F << 16);
 
@@ -251,11 +284,15 @@ void handle_pl011_uart() {
         uint32_t mis = mmio_read(UART0_MIS);
 
         if (mis & UART_RX_BIT) {
-            handle_uart0_rx();
+            uart_rx_handler();
         }
 
         if (mis & UART_TX_BIT) {
-            handle_uart0_tx();
+            uart_tx_handler();
+        }
+
+        if (mis & UART_RT_BIT) {
+            uart_rt_handler();
         }
     }   
 
@@ -287,13 +324,17 @@ void handle_pl011_uart() {
  *  - Checks circular buffer for data
  *  - Refills Transmit FIFO
  */ 
-void handle_uart0_tx() {
-    // Check if the buffer is not empty and TX FIFO is not
-    while (!uart_bufferEmpty() && !UART0_TXFF) {
+void uart_tx_handler() {
+    debug_info.interrupt_calls++;
+    // Check if the buffer is not empty and TX FIFO is not full
+    do {
         // write the next char in the buffer
-        mmio_write(UART0_DR, uart_output_buffer[uart_output_buffer_read]);
-        uart_output_buffer_read = (uart_output_buffer_read + 1) % UART_MAX_QUEUE;
-    }
+        if (!UART0_TXFF) {
+            mmio_write(UART0_DR, uart_output_buffer[uart_output_buffer_read]);
+            uart_output_buffer_read = (uart_output_buffer_read + 1) % UART_MAX_QUEUE;
+            debug_info.total_transmitted++;
+        }
+    } while (!uart_bufferEmpty());
 
     // Clear the Transmit Interrupt
     mmio_write(UART0_ICR, UART_TX_BIT);
@@ -306,9 +347,9 @@ void handle_uart0_tx() {
 /**
  * Handles the UART 0 Receiver Interrupt.
  */
-void handle_uart0_rx() {
+void uart_rx_handler() {
     // Check if the Receive FIFO is not empty and UART is not busy transmitting
-    while(!UART0_RXFE && !UART0_BUSY) {
+    while(!UART0_RXFE) {
         char c = (char) (mmio_read(UART0_DR) & 0xFF); // reads the first 8 bits of the Data Reg
 
         // temporarily loop back into the buffer
@@ -317,7 +358,20 @@ void handle_uart0_rx() {
 
     // clear the interrupt
     mmio_write(UART0_ICR, UART_RX_BIT);
+}
 
-    // write out
-    uart0_startTX();
+/**
+ * Handles the UART 0 Receive Timeout Interrupt
+ */
+void uart_rt_handler() {
+    // Read leftover data in FIFO
+    while(!UART0_RXFE) {
+        char c = (char) (mmio_read(UART0_DR) & 0xFF); // reads the first 8 bits of the Data Reg
+
+        // temporarily loop back into the buffer
+        uart_writeByte(c);
+    }
+
+    // clear the interrupt
+    mmio_write(UART0_ICR, UART_RT_BIT);
 }

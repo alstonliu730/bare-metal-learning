@@ -25,6 +25,7 @@
 
 #define UART_RX_BIT             (1 << 4)
 #define UART_TX_BIT             (1 << 5)
+#define UART_RT_BIT             (1 << 6)
 
 // ------------------------- UART 0 Addresses-------------------------
 #define UART0_DR                (UART0_BASE + 0x00)
@@ -66,16 +67,16 @@ void uart_writeInt(int num);
 void uart_writeHex(long num);
 
 // UART 0
-void uart0_writeText(char *text);
-void uart0_loadOutputBuffer();
-
-uint32_t get_uart_clock();
+void uart_writeText(char *text);
+void uart_loadOutputBuffer();
 
 // UART 0 Interrupt
-void uart0_init();
-void handle_pl011_uart();
-void handle_uart0_tx();
-void handle_uart0_rx();
+void uart_init();
+void uart_handler();
+void uart_tx_handler();
+void uart_rx_handler();
+void uart_rt_handler();
 void set_fifo_level(fifo_level_t rx_sel, fifo_level_t tx_sel);
 
+void dump_debug_info();
 #endif

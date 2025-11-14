@@ -12,19 +12,19 @@
  * Reports which interrupt is set and the exception information on the invalid entry.
  */
 void exception_report(uint64_t type, uint64_t esr, uint64_t elr ,uint64_t spsr) {
-    // mUart_writeText("\nType: ");
-    // mUart_writeHex(type);
+    uart_writeText("\nType: ");
+    uart_writeHex(type);
 
-    // mUart_writeText("\nESR REG:");
-    // mUart_writeHex(esr);
+    uart_writeText("\nESR REG:");
+    uart_writeHex(esr);
 
-    // mUart_writeText("\nELR REG: ");
-    // mUart_writeHex(elr);
+    uart_writeText("\nELR REG: ");
+    uart_writeHex(elr);
 
-    // mUart_writeText("\nSPSR REG: ");
-    // mUart_writeHex(spsr);
+    uart_writeText("\nSPSR REG: ");
+    uart_writeHex(spsr);
 
-    // mUart_writeText("\n");
+    uart_writeText("\n");
     return;
 }
 
@@ -43,7 +43,7 @@ void irq_el1h_handler() {
         }
         case PL011_UART_IRQ: {
             // OR of all UART IRQ asserts
-            handle_pl011_uart();
+            uart_handler();
             break;
         }
         case 1023: // Spurious

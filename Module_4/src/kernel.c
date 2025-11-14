@@ -45,21 +45,24 @@ void main() {
 
     // UART 0 Initialization
     led_on();
-    uart0_init();
+    uart_init();
     timer_wait(1000);
 
-    uart0_writeText("Hello\n");
-    uart0_writeText("What is going on?\n");
+    uart_writeText("PL011 UART 0 Initialized\n");
     
     timer_wait(1000);
     led_off();
 
-    // led_on();
-    // fb_init();
-    // delay(10000);
-    // led_off();
-    // uart_writeText("Frame Buffer Initialized\n");
+    // Frame Buffer Initialization
+    led_on();
+    fb_init();
+    timer_wait(1000);
+    uart_writeText("Frame Buffer Initialized\n");
+    led_off();
+    
+    timer_wait(1000);
+    
     while(1) {
-        
+
     }
 }
