@@ -39,9 +39,6 @@ void timer_init() {
  * Handle Timer 1 interrupt by setting a delay of 1 second.
  */
 void handle_timer1() {
-    // Toggle Led
-    // led_toggle();
-
     // Set Next Compare Value
     uint32_t curr = mmio_read(SYS_TIMER_CLO);
     mmio_write(SYS_TIMER_C1, curr + CLOCK_HZ);

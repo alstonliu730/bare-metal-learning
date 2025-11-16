@@ -90,7 +90,6 @@ uint32_t uart_bufferEmpty() {
  * Starts the TX Transmission Interrupt
  */
 void uart_startTX() {
-    debug_info.startTX_calls++;
     if (uart_bufferEmpty()) {
         // Do nothing if the buffer is empty
         return;
@@ -119,8 +118,8 @@ void uart_startTX() {
 void uart_writeByte(unsigned char ch) {
     unsigned int next_write = (uart_output_buffer_write + 1) % UART_MAX_QUEUE;
     
-    while (next_write == uart_output_buffer_read) {
-        // Wait until there is space in the buffer
+    if (next_write == uart_output_buffer_read) {
+        // if the buffer is full attempt to transmit immediately
         uart_startTX();
     } 
 
@@ -211,9 +210,6 @@ void uart_writeText(char *text) {
         uart_writeByte(*text++); // Send character
     }
 
-    // DEBUG
-    debug_info.buffer_read_pos = uart_output_buffer_read;
-    debug_info.buffer_write_pos = uart_output_buffer_write;
     uart_startTX();
 }
 
@@ -294,29 +290,7 @@ void uart_handler() {
         if (mis & UART_RT_BIT) {
             uart_rt_handler();
         }
-    }   
-
-    // UART 2
-    if (uart_id & UART2_MASK) {
-
     }
-
-    // UART 3
-    if (uart_id & UART3_MASK) {
-
-    }
-
-    // UART 4
-    if (uart_id & UART4_MASK) {
-
-    }
-
-    // UART 5
-    if (uart_id & UART5_MASK) {
-
-    }
-
-    return;
 }
 
 /**
@@ -325,14 +299,12 @@ void uart_handler() {
  *  - Refills Transmit FIFO
  */ 
 void uart_tx_handler() {
-    debug_info.interrupt_calls++;
     // Check if the buffer is not empty and TX FIFO is not full
     do {
         // write the next char in the buffer
         if (!UART0_TXFF) {
             mmio_write(UART0_DR, uart_output_buffer[uart_output_buffer_read]);
             uart_output_buffer_read = (uart_output_buffer_read + 1) % UART_MAX_QUEUE;
-            debug_info.total_transmitted++;
         }
     } while (!uart_bufferEmpty());
 
@@ -352,8 +324,13 @@ void uart_rx_handler() {
     while(!UART0_RXFE) {
         char c = (char) (mmio_read(UART0_DR) & 0xFF); // reads the first 8 bits of the Data Reg
 
-        // temporarily loop back into the buffer
-        uart_writeByte(c);
+        // For immediate echo, try direct write if FIFO has space
+        if (!UART0_TXFF) {
+            mmio_write(UART0_DR, c);  // Direct echo
+        } else {
+            uart_writeByte(c);  // Use buffer only if FIFO full
+            uart_startTX();
+        }
     }
 
     // clear the interrupt
@@ -368,8 +345,13 @@ void uart_rt_handler() {
     while(!UART0_RXFE) {
         char c = (char) (mmio_read(UART0_DR) & 0xFF); // reads the first 8 bits of the Data Reg
 
-        // temporarily loop back into the buffer
-        uart_writeByte(c);
+        // For immediate echo, try direct write if FIFO has space
+        if (!UART0_TXFF) {
+            mmio_write(UART0_DR, c);  // Direct echo
+        } else {
+            uart_writeByte(c);  // Use buffer only if FIFO full
+            uart_startTX();
+        }
     }
 
     // clear the interrupt

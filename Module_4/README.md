@@ -17,7 +17,9 @@ The design for the Raspberry Pi routes the interrupt signal to the **GIC-400** (
 ![GIC-400 Partitioning Table](assets/gic_func_block.png)
 
 #### Distributor
-The distributor receives interrupts and pushes them through the highest priority pending interrupt to every CPU interface. You can configure it to control the CPU interface from which it routes the **SPIs**(Shared Peripheral Interrupts) and **PPIs**(Private Peripheral Interrupts). It can enable or disable interrupts, set priorities, and router interrupts to specific CPU cores. Each interrupt needs to be enabled and will need a priority value and a target. The targets would be the CPU interfaces and in a multi-core environment we need to assign a processor for it to execute. However, we have it only set to core 0 since we are working in a single-core environment *for now*.
+The distributor receives interrupts and pushes them through the highest priority pending interrupt to every CPU interface. You can configure it to control the CPU interface from which it routes the **SPIs**(Shared Peripheral Interrupts), **PPIs**(Private Peripheral Interrupts) & **SGI**(Software Generated Interrupts). It can enable or disable interrupts, set priorities, and router interrupts to specific CPU cores. Each interrupt needs to be enabled and will need a priority value and a target. The targets would be the CPU interfaces and in a multi-core environment we need to assign a processor for it to execute. However, we have it only set to core 0 since we are working in a single-core environment *for now*. Here is a diagram of the distributor register offsets:
+
+![GIC Distributor Register Map](assets/gicd_reg_map.png)
 
 #### CPU Interface
 Each interface signals interrupts to the processor and receives acknowledge and *EOI (End of Interrupt)* access from that processor. The interface only signals the interrupts if it has sufficient priority. Prioritization is determined by the CPU interface's configuration and the active interrupts' priority. Each core has its own CPU interface and is responsible for interrupt completion signaling. 
@@ -27,23 +29,42 @@ Each interface signals interrupts to the processor and receives acknowledge and 
 2. For every pending interrupt, the **Distributor** chooses a target processor.
 3. The **Distributor** checks for the highest priority pending interrupt to each CPU interface.
 4. The CPU interface determines if the interrupt has a high enough priority to assert the IRQ or FIQ request to signal the processor.
-5. When the processor takes the exception, it reads the Interrupt Acknowledge register (**gics_IAR**) to notify the controller that the processor sees the pending interrupt and needs which interrupt is asserting the line. This returns the highest priority pending interrupt id. It then changes the state of that interrupt from *pending* to *active*.
-6. After the interrupt is handled, the processor writes to the End of Interrupt Register (**GICC_EOIR**). This will deactivate the interrupt and set its state to *inactive*.
+5. When the processor takes the exception, it reads the Interrupt Acknowledge register (`GICS_IAR`) to notify the controller that the processor sees the pending interrupt and needs which interrupt is asserting the line. This returns the highest priority pending interrupt id. It then changes the state of that interrupt from *pending* to *active*.
+6. After the interrupt is handled, the processor writes to the End of Interrupt Register (`GICC_EOIR`). This will deactivate the interrupt and set its state to *inactive*.
 
 ### Timer Interrupts
 To implement the System Timer, we first consult the BCM2711 ARM Peripheral Manual that gives us info on the registers. We can see that there's **four 32-bit timer channels** & **one 64-bit free running counter**. Each channel has a compare register to compare the 32 least significant bits of the free running counter. When the compare value and the counter value match, the timer will signal the interrupt controller to read the compare register and add the appropriate offset for the next timer tick.
 
 ![System Timer Overview and Registers](assets/sys_timer_info.png)
 
-After handling the timer interrupt, we need to clear the interrupt signal. To do that, we need to write to the System Timer Control Register. This clears the register since it's **W1C** (Write `1` to Clear). Afterwards, we write to the End of Interrupt Register to signal the controller that we are done.
+After handling the timer interrupt, we need to clear the interrupt signal. To do that, we need to write to the System Timer Control Register. This clears the register since it's **W1C** (*Write  to Clear*). Afterwards, we write to the End of Interrupt Register to signal the controller that we are done. However, due to the introduction of the GIC in the fourth version of the Raspberry Pi, the timer interrupt is routed through the Legacy Interrupt Controller and needs to be enabled in the GIC-400 according to this [blog](https://forums.raspberrypi.com/viewtopic.php?t=356695). To do that, we need to enable the interrupt, set the priority, assign its target processor, and set the type of interrupt. 
+
+We first find out the interrupt id for the system timers in the GIC architecture. According to the BCM2711 ARM Peripheral Manual, `Timer 0` is **ID \#0** in the VideoCore Interrupts: 
+
+![VC Interrupt IRQ Table](assets/vc_irq_table.png)
+
+According to the diagram below, the VC interrupts are routed at the *SPI IDs of 96 - 159*. To enable the Timer 0, we need to set the bit associated to **SPI ID 96** in the `GICD_ISENABLER`: 
+
+![GIC IRQ Layout in BCM2711 Manual](assets/gic_irq_layout.png)
+
+To set the priority, we set the the priority for the Timer 0 in the offset of 96 since that's the Timer 0 ID. For each **word**(*32-bit number*), there are 4 priority fields that holds the value for each SPI, PPI, & SGI. We need to find the offset from the beginning of the address to where `SPI 96`'s priority field would be. To calculate that, we use this formula:
+
+```C
+uint32_t n = irq / 4; 
+uint32_t offset = (irq % 4) * 8;
+long priorityReg = GICD_PRIORITY + (4 * n); 
+```
+
+In the first line, we determine the address of the priority register we are using. In this register it's a 32-bit number and every byte is an offset for one SPI ID. After setting the priority, we set a target processor where the interrupt handler will be executed. We would use the register `GICD_ITARGETSR`. In my implementation so far, we haven't enabled multicore scheduling so we only need to target the first CPU. Lastly, we set the configuration of the interrupt. There are two options: `level-sensitive` or `edge-triggered`. **Level-Sensitive** interrupts asserts the irq line when a value reaches a level and stays asserted. It's cleared when the interrupt is not at the level or it's manually cleared in the register `GICD_ICACTIVER`. **Edge-Triggered** interrupts assert the irq line on a rising edge and remain pending until cleared by the peripheral or manually cleared.
 
 ### UART Interrupts
-In my current implementation, we are using miniUART (**UART 1**) with a polling design. The problem with this implementation is that it blocks the CPU from doing other tasks. It is continuously checking for data and wastes CPU cycles and power. It's inefficient for the processor to be always listening to the UART. To fix this, we only enable the **TX** when we have data to send and the **RX** if there's data to receive. This allows the processor to handle the event in real-time and perform other instructions without waiting.  
+In my current implementation, we are using miniUART (**UART 1**) with a polling design. The problem with this implementation is that it blocks the CPU from doing other tasks. It is continuously checking for data and wastes CPU cycles and power. It's inefficient for the processor to be always listening to the UART. To fix this, we only enable the **TX** when we have data to send. This allows the processor to handle the event in real-time and perform other instructions without waiting. MiniUART's baud rate is determined by the VPU's frequency which can fluctuate but PL011 UART has its own clock frequency and is more stable.
 
 ## Notes
-- When developing the interrupt controller, I realized that the Legacy Interrupt Controller is routed through the GIC-400. To enable that, we had to write to the IRQ Registers close to the ARMC Registers.
-- I made this mistake multiple times when developing but when the BCM2711 ARM Peripherals says **GPIO32**, it **DOESN'T** refer to the pin numbers on the Raspberry Pi. It took me days to figure out why my UART characters were not displayed on the terminal.
+- When developing the interrupt controller, I realized that the some of the peripherals are first routed through the Legacy Interrupt Controller then to the GIC-400. To enable that, we had to write to the IRQ Registers close to the ARMC Registers.
+- Remember that **GPIO32** doesn't mean pin number **32** on the raspberry pi. Refer to the pinout chart in the BCM2711 Peripheral Manual.
 
 # Resources
 - Added [ARM GIC-400 file](../resources/ARM_gic400_manual.pdf) that describes the overview of the Raspberry Pi 4B's GIC. It will contain additional information of the controller that's not in the GICv2 manual.
 - Added [ARM GIC v2 Architecture](../resources/gicv2_arch.pdf) that discloses the ARM Generic Interrupt Controller design and functionality. It provides helpful information like INterrupt Handling, Register Bits, Programmer's Model, etc.
+- Added [PL011 UART Manual](../resources/pl011_uart_manual.pdf) that includes the PL011 UART interrupt procedures, Programmer's Model, and the register descriptions.
