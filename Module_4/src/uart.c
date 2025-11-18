@@ -11,32 +11,6 @@
 static volatile unsigned char uart_output_buffer[UART_MAX_QUEUE];
 static volatile uint32_t uart_output_buffer_write;
 static volatile uint32_t uart_output_buffer_read;
-typedef struct {
-    uint32_t total_written;
-    uint32_t total_transmitted;
-    uint32_t startTX_calls;
-    uint32_t interrupt_calls;
-    uint32_t buffer_write_pos;
-    uint32_t buffer_read_pos;
-} debug_info_t;
-
-// Create debugging information
-volatile debug_info_t debug_info __attribute__((section(".data"))) = {0};
-
-void dump_debug_info() {
-    uart_writeText("Written: 0x");
-    uart_writeHex(debug_info.total_written);
-    uart_writeText("\nTransmitted: 0x");
-    uart_writeHex(debug_info.total_transmitted);
-    uart_writeText("\nStartTX: 0x");
-    uart_writeHex(debug_info.startTX_calls);
-    uart_writeText("\nInterrupt Calls: 0x");
-    uart_writeHex(debug_info.interrupt_calls);
-    uart_writeText("\nBuffer Write Pos: 0x");
-    uart_writeHex(uart_output_buffer_write);
-    uart_writeText("\nBuffer Read Pos: 0x");
-    uart_writeHex(uart_output_buffer_read);
-}
 
 // Mailbox Request to get the UART Clock
 static uint32_t __attribute__((unused)) get_uart_clock() {
@@ -271,7 +245,7 @@ void uart_init() {
  */
 void uart_handler() {
     // Check which IRQ was set (reading bits 16 - 20)
-    uint32_t uart_id = mmio_read(PACTL_CS) & (0x1F << 16);
+    uint32_t uart_id = (mmio_read(PACTL_CS) >> 16) & 0x1F;
 
     // UART 0
     if (uart_id & UART0_MASK) {
@@ -316,7 +290,7 @@ void uart_tx_handler() {
 }
 
 /**
- * Helper function to read the characters in the Receive FIFOs.
+ * Helper function to read and write the characters from the Receive FIFO.
  */
 static void get_chars() {
     // Check if the Receive FIFO is not empty and UART is not busy transmitting

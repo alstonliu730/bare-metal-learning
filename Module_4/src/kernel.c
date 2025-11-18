@@ -45,7 +45,7 @@ void main() {
     // UART 0 Initialization
     led_on();
     uart_init();
-    timer_wait(1000);
+    timer_wait(500);
 
     uart_writeText("PL011 UART 0 Initialized\n");
     

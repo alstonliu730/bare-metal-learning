@@ -83,7 +83,7 @@
 
     bl  exception_report
     kernel_exit
-    // b err_hang
+    b err_hang
 .endm
 
 // Exception Vector Table

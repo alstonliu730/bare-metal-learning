@@ -17,11 +17,11 @@
 #define UART4_BASE              0xFE201800
 #define UART5_BASE              0xFE201A00
 
-#define UART0_MASK              (1 << 20)
-#define UART2_MASK              (1 << 19)
-#define UART3_MASK              (1 << 18)
-#define UART4_MASK              (1 << 17)
-#define UART5_MASK              (1 << 16)
+#define UART0_MASK              (1 << 4)
+#define UART2_MASK              (1 << 3)
+#define UART3_MASK              (1 << 2)
+#define UART4_MASK              (1 << 1)
+#define UART5_MASK              (1 << 0)
 
 #define UART_RX_BIT             (1 << 4)
 #define UART_TX_BIT             (1 << 5)
@@ -77,6 +77,4 @@ void uart_tx_handler();
 void uart_rx_handler();
 void uart_rt_handler();
 void set_fifo_level(fifo_level_t rx_sel, fifo_level_t tx_sel);
-
-void dump_debug_info();
 #endif
