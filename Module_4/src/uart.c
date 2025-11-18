@@ -100,7 +100,6 @@ void uart_startTX() {
         while (!uart_bufferEmpty() && !UART0_TXFF) {
             mmio_write(UART0_DR, uart_output_buffer[uart_output_buffer_read]);
             uart_output_buffer_read = (uart_output_buffer_read + 1) % UART_MAX_QUEUE;
-            debug_info.total_transmitted++;
         }
     }
     
@@ -112,22 +111,23 @@ void uart_startTX() {
 }
 
 /**
- * Write a byte to the UART output buffer.
- * If the FIFO is full, then write to the output buffer until the TX interrupt is asserted.
+ * Write a given character to the UART DR or the output buffer to be transmitted.
+ * If the FIFO is full, then write to the output buffer until the TX interrupt is asserted
+ * Otherwise, we write directly to the UART Data Register
  */
 void uart_writeByte(unsigned char ch) {
-    unsigned int next_write = (uart_output_buffer_write + 1) % UART_MAX_QUEUE;
+    if (!UART0_TXFF) {
+        mmio_write(UART0_DR, ch);
+    } else {
+        unsigned int next_write = (uart_output_buffer_write + 1) % UART_MAX_QUEUE;
     
-    if (next_write == uart_output_buffer_read) {
-        // if the buffer is full attempt to transmit immediately
-        uart_startTX();
-    } 
-
-    // DEBUG
-    debug_info.total_written++;
-
-    uart_output_buffer[uart_output_buffer_write] = ch;
-    uart_output_buffer_write = next_write;
+        if (next_write == uart_output_buffer_read) {
+            // if the output buffer is full, attempt to transmit immediately
+            uart_startTX();
+        }
+        uart_output_buffer[uart_output_buffer_write] = ch;
+        uart_output_buffer_write = next_write;
+    }
 }
 
 /**
@@ -209,8 +209,6 @@ void uart_writeText(char *text) {
         } 
         uart_writeByte(*text++); // Send character
     }
-
-    uart_startTX();
 }
 
 /* ------------------------------------- PL011 UART ------------------------------------- */
@@ -259,8 +257,9 @@ void uart_init() {
     uint32_t lcr_val = (1 << 4) | (3 << 5);
     mmio_write(UART0_LCRH, lcr_val);
 
-    // Enabling only the receive interrupt
-    mmio_write(UART0_IMSC, (1 << 4));
+    // Enabling only the receive interrupt and receive timeout
+    uint32_t imsc_val = (1 << 6) | (1 << 4);
+    mmio_write(UART0_IMSC, imsc_val);
 
     // Enable TX and RX and UART again
     uint32_t cr_val = (1 << 9) | (1 << 8) | 1;
@@ -317,21 +316,29 @@ void uart_tx_handler() {
 }
 
 /**
- * Handles the UART 0 Receiver Interrupt.
+ * Helper function to read the characters in the Receive FIFOs.
  */
-void uart_rx_handler() {
+static void get_chars() {
     // Check if the Receive FIFO is not empty and UART is not busy transmitting
     while(!UART0_RXFE) {
         char c = (char) (mmio_read(UART0_DR) & 0xFF); // reads the first 8 bits of the Data Reg
-
-        // For immediate echo, try direct write if FIFO has space
-        if (!UART0_TXFF) {
-            mmio_write(UART0_DR, c);  // Direct echo
-        } else {
-            uart_writeByte(c);  // Use buffer only if FIFO full
-            uart_startTX();
+        
+        if (c == '\r') {
+            // Add newline with return key
+            uart_writeByte('\r');
+            uart_writeByte('\n');
+            continue;
         }
+        uart_writeByte(c);  // Use buffer only if FIFO full
     }
+}
+
+/**
+ * Handles the UART 0 Receiver Interrupt.
+ */
+void uart_rx_handler() {
+    // Push characters into Transmit FIFO
+    get_chars();
 
     // clear the interrupt
     mmio_write(UART0_ICR, UART_RX_BIT);
@@ -342,17 +349,7 @@ void uart_rx_handler() {
  */
 void uart_rt_handler() {
     // Read leftover data in FIFO
-    while(!UART0_RXFE) {
-        char c = (char) (mmio_read(UART0_DR) & 0xFF); // reads the first 8 bits of the Data Reg
-
-        // For immediate echo, try direct write if FIFO has space
-        if (!UART0_TXFF) {
-            mmio_write(UART0_DR, c);  // Direct echo
-        } else {
-            uart_writeByte(c);  // Use buffer only if FIFO full
-            uart_startTX();
-        }
-    }
+    get_chars();
 
     // clear the interrupt
     mmio_write(UART0_ICR, UART_RT_BIT);
