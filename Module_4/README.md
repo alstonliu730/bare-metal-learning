@@ -47,7 +47,7 @@ According to the diagram below, the VC interrupts are routed at the *SPI IDs of 
 
 ![GIC IRQ Layout in BCM2711 Manual](assets/gic_irq_layout.png)
 
-To set the priority, we set the the priority for the Timer 0 in the offset of 96 since that's the Timer 0 ID. For each **word**(*32-bit number*), there are 4 priority fields that holds the value for each SPI, PPI, & SGI. We need to find the offset from the beginning of the address to where `SPI 96`'s priority field would be. To calculate that, we use this formula:
+To set the priority, we set the the priority for the Timer 0 in the offset of 96 since that's the Timer 0 ID. For each **word**(*32-bit number*) in the register, there are 4 priority fields that holds the value for each corresponding SPI, PPI, & SGI. We need to find the offset from the beginning of the address range to where `SPI 96`'s priority field would be. To calculate that, we use this formula:
 
 ```C
 uint32_t n = irq / 4; 
@@ -58,7 +58,24 @@ long priorityReg = GICD_PRIORITY + (4 * n);
 In the first line, we determine the address of the priority register we are using. In this register it's a 32-bit number and every byte is an offset for one SPI ID. After setting the priority, we set a target processor where the interrupt handler will be executed. We would use the register `GICD_ITARGETSR`. In my implementation so far, we haven't enabled multicore scheduling so we only need to target the first CPU. Lastly, we set the configuration of the interrupt. There are two options: `level-sensitive` or `edge-triggered`. **Level-Sensitive** interrupts asserts the irq line when a value reaches a level and stays asserted. It's cleared when the interrupt is not at the level or it's manually cleared in the register `GICD_ICACTIVER`. **Edge-Triggered** interrupts assert the irq line on a rising edge and remain pending until cleared by the peripheral or manually cleared.
 
 ### UART Interrupts
-In my current implementation, we are using miniUART (**UART 1**) with a polling design. The problem with this implementation is that it blocks the CPU from doing other tasks. It is continuously checking for data and wastes CPU cycles and power. It's inefficient for the processor to be always listening to the UART. To fix this, we only enable the **TX** when we have data to send. This allows the processor to handle the event in real-time and perform other instructions without waiting. MiniUART's baud rate is determined by the VPU's frequency which can fluctuate but PL011 UART has its own clock frequency and is more stable.
+In my current implementation, we are using miniUART (**UART 1**) with a polling design. The problem with this implementation is that it blocks the CPU from doing other tasks. It is continuously checking for data and wastes CPU cycles and power. It's inefficient for the processor to be always listening to the UART. To fix this, we only enable the **TX** when we have data to send. This allows the processor to handle the event in real-time and perform other instructions without waiting. Another benefit is the set clock frequency for UART. MiniUART's baud rate is determined by the VPU's frequency which can fluctuate but PL011 UART has its own clock frequency and is more stable. Therefore, this can lead to less loss in data and can handle reliable transfers at high speeds.
+
+To initialize the UART interrupts, we have to configure these features:
+- Enable UART FIFO and set the trigger levels
+- Set the Baud Rate
+- Configure the GPIO pins and functions
+- Enable the transmission, receive, and UART
+- Configure GIC to route interrupts
+
+Using the BCM2711 manual and the VideoCore diagram in the *Timer Interrupt* section, we can see that the VC Interrupt contains the **OR of all PL011 UART** at **ID \#57**. This means the GIC will know if the UART is asserting an interrupt but won't know which one. Underneath the diagram there's a description about figuring out which UART asserted the IRQ line: 
+
+![PACTL_CS Diagram](assets/pactl-diagram.png)
+
+The `PACTL_CS` address is at `0x7E204E00` but for *low-peripheral mode* we would change it to `0xFE204E00`. To know which irq was fired we have to read the bit position for those. In our case, UART uses bit **16** through **20** according to the diagram. After finding the which UART line is asserted, we check the corresponding **UART MIS** register to see which interrupt is being called. For my use case, we have the Receive, Transmit, & Receive Timeout handlers.
+
+The Transmit interrupt's role is to refill the transmit FIFO from the output buffer. When we display to the UART, we directly write to the Data Register (`UART_DR`). This puts the character into the hardware FIFO for the Transmission. However when the FIFO starts to fill, we need a routine that can refill it. The transmission interrupt fires once there's a **transition** from greater than the trigger level to less than or equal to the trigger level.
+
+The Receive Interrupt is different since sometimes there are short bursts of characters and then there are long messages. The receive interrupt is when there's a **transition** from less than the trigger level to greater than or equal to the trigger level. However, not all inputs will be that quick. So there's an additional interrupt called the Receive Timeout interrupt that handles this. It is fired when there's characters in the FIFO and no new input has been detected by 32-bit number period (the time it takes to transfer a 32-bit number based on the baud rate). For now, we do not have any application that needs to input from UART so we will develop an echo which takes the input and transmits it back to the user/console.
 
 ## Notes
 - When developing the interrupt controller, I realized that the some of the peripherals are first routed through the Legacy Interrupt Controller then to the GIC-400. To enable that, we had to write to the IRQ Registers close to the ARMC Registers.
