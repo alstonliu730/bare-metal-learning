@@ -1,5 +1,5 @@
 #ifndef GIC_H
-#define GIF_H
+#define GIC_H
 
 #include <common.h>
 
@@ -60,4 +60,4 @@ void setup_interrupt(uint32_t irq, uint32_t priority, gicd_cfg_flags_t flag);
 
 void gic_init();
 
-#endif /* GIF_H */
+#endif /* GIC_H */

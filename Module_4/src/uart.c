@@ -113,7 +113,7 @@ void uart_writeInt(int num) {
     int isNeg = 0;    
     
     // Check if int is a negative
-    if (num == 0) {
+    if (num < 0) {
         isNeg = 1;
         num = -num;
     }
@@ -147,7 +147,7 @@ void uart_writeHex(long num) {
     int isNeg = 0;
 
      // Check if int is a negative
-    if (num == 0) {
+    if (num < 0) {
         isNeg = 1;
         num = -num;
     }
