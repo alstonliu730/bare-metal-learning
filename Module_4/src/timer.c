@@ -9,7 +9,7 @@ uint32_t get_timer32() {
 
 uint64_t get_timer64() {
     uint64_t timer_hi = mmio_read(SYS_TIMER_CHI);
-    uint32_t res = mmio_read(SYS_TIMER_CLO);
+    uint64_t res = mmio_read(SYS_TIMER_CLO);
 
     res |= (timer_hi << 32);
     return res;

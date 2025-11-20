@@ -60,7 +60,6 @@ void main() {
     led_off();
     
     timer_wait(1000);
-    
     while(1) {
 
     }

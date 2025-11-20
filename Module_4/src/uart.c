@@ -70,7 +70,7 @@ void uart_startTX() {
     }
 
     // Prime the TX FIFO with initial data if it's empty
-    if (UART0_TXFE) {  // If TX FIFO is empty
+    if (UART0_TXFE) {
         while (!uart_bufferEmpty() && !UART0_TXFF) {
             mmio_write(UART0_DR, uart_output_buffer[uart_output_buffer_read]);
             uart_output_buffer_read = (uart_output_buffer_read + 1) % UART_MAX_QUEUE;
@@ -90,7 +90,8 @@ void uart_startTX() {
  * Otherwise, we write directly to the UART Data Register
  */
 void uart_writeByte(unsigned char ch) {
-    if (!UART0_TXFF) {
+    // Directly write to FIFO
+    if (!UART0_TXFF && uart_bufferEmpty()) {
         mmio_write(UART0_DR, ch);
     } else {
         unsigned int next_write = (uart_output_buffer_write + 1) % UART_MAX_QUEUE;
@@ -101,6 +102,11 @@ void uart_writeByte(unsigned char ch) {
         }
         uart_output_buffer[uart_output_buffer_write] = ch;
         uart_output_buffer_write = next_write;
+    }
+
+    // start transmitting when the FIFO is full and empty out the output buffer
+    if (UART0_TXFF) {
+        uart_startTX();
     }
 }
 
@@ -119,7 +125,7 @@ void uart_writeInt(int num) {
     }
 
     if (num == 0) {
-        buf[i++] = 0;
+        buf[i++] = '0';
     } else {
         // Convert digits to chars in reverse order
         while (num > 0) {
@@ -153,7 +159,7 @@ void uart_writeHex(long num) {
     }
 
     if (num == 0) {
-        buf[i++] = 0;
+        buf[i++] = '0';
     } else {
         // Convert digits to chars in reverse order
         while (num > 0) {

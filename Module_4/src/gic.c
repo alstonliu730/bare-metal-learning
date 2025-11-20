@@ -56,7 +56,7 @@ void set_irq_priority(uint32_t irq, uint32_t priority) {
     uint32_t offset = (irq % 4) * 8; // bit shift by offset
     long priorityReg = GICD_PRIORITY + (4 *n);
 
-    uint32_t val = mmio_read(priorityReg) | (priority << offset);
+    uint32_t val = (mmio_read(priorityReg) & ~(0xFF << offset)) | (priority << offset);
 
     // Setting priority for the given interrupt
     mmio_write(priorityReg, val);
@@ -76,7 +76,7 @@ void assign_target(uint32_t irq) {
     uint32_t offset = irq % 4; // Which byte in that register
     uint32_t bit_shift = offset * 8;
 
-    uint32_t val = mmio_read(target) | (1 << bit_shift);
+    uint32_t val = (mmio_read(target) & ~(0xFF << bit_shift)) | (1 << bit_shift);
 
     // Setting target to Core 0
     mmio_write(target, val);
