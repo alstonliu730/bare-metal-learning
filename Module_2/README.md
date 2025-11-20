@@ -224,5 +224,7 @@ The `config.txt` file controls how the GPU firmware initializes hardware before 
 
 Since we cannot modify Broadcom's proprietary firmware, we're writing bare-metal code that runs after the firmware has initialized the system. Our code depends on the firmware having properly configured the hardware based on config.txt settings. This is why settings like `enable_uart=1` or `display_auto_detect=1` are critical - they tell the firmware what to initialize before our code runs.
 
+**NOTE**: There is an error with the register `AUX_MU_LCR_REG`. This is just a documentation problem with Raspberry Pi Developers. To set the data length you would need the the first 2 bits instead of just the first bit. After setting both bits to 1, we got it to work in 8-bit data mode.
+
 
 
