@@ -8,7 +8,7 @@ It is essential to know what architecture and peripherals you are working with i
 
 In a **System-on-Chip** (SoC), it can be different since it integrates multiple CPU cores, GPU, memory controllers, interfaces, and other processing units. It would contain more external memory. These chips are more general-purpose for complex software with an OS. Many SoC chips will have multiple cores to leverage the out-of-order execution in parallel programming. This is an example of what a Raspberry Pi may look like:
 
-![A high-level overview of the Raspberry Pi 2](Module_0/assets/rpi2-arch.png)
+![A high-level overview of the Raspberry Pi 2](Introduction/assets/rpi2-arch.png)
 
 **Bare-Metal Programming** uses techniques to help define the function for these components either for MCU or SoC architectures. Since we are using a SoC, we will be implementing the drivers for each peripheral which can be a difficult task in a complex system. I believe we can go through this together to learn more about how each behavior is functioning in a small yet intricate device.
 
