@@ -1,7 +1,7 @@
 #include <common.h>
 #include <irq.h>
 #include <sched.h>
-
+#include <stdint.h>
 static task_struct_t init_task = INIT_TASK;
 task_struct_t* current = &(init_task);
 task_struct_t* task[NR_TASKS] = {&(init_task), };
@@ -35,7 +35,7 @@ static void _schedule() {
         }
 
         // Found task then break
-        if (count < 0) {
+        if (count > 0) {
             break;
         }
 
@@ -60,7 +60,7 @@ void switch_task(task_struct_t* next) {
     if (current == next) return;
     task_struct_t* prev = current;
     current = next;
-
+    
     cpu_switch_task(prev, next);
 }
 

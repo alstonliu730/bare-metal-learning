@@ -8,26 +8,6 @@
 #define DISABLE 0
 
 /**
- * Reports which interrupt is set and the exception information on the invalid entry.
- */
-void exception_report(uint64_t type, uint64_t esr, uint64_t elr ,uint64_t spsr) {
-    uart_writeText("\nType: ");
-    uart_writeHex(type);
-
-    uart_writeText("\nESR REG:");
-    uart_writeHex(esr);
-
-    uart_writeText("\nELR REG: ");
-    uart_writeHex(elr);
-
-    uart_writeText("\nSPSR REG: ");
-    uart_writeHex(spsr);
-
-    uart_writeText("\n");
-    return;
-}
-
-/**
  * Interrupt Controller that controls the behavior of each interrupt source.
  */
 void irq_el1h_handler() {
@@ -38,6 +18,11 @@ void irq_el1h_handler() {
     switch (irq_num) {
         case SYS_TIMER_IRQ_1: {
             handle_timer1(); // Timer 1 Interrupt
+            break;
+        }
+
+        case SYS_TIMER_IRQ_2: {
+            handle_timer2(); // Timer 2 Interrupt
             break;
         }
         case PL011_UART_IRQ: {

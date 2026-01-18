@@ -1,6 +1,6 @@
 #include <gpio.h>
 #include <common.h>
-
+#include <stdint.h>
 #define PULL_NONE 0
 #define PULL_UP   1
 #define PULL_DOWN 2

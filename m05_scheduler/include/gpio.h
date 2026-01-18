@@ -2,7 +2,7 @@
 #define _IO_H
 
 #include <common.h>
-
+#include <stdint.h>
 #define GPIO_BASE               (PERIPHERAL_BASE + 0x200000)
 #define GPFSEL0                 (GPIO_BASE + 0x00)
 #define GPFSEL1                 (GPIO_BASE + 0x04)
@@ -49,10 +49,5 @@ void led_init();
 void led_on();
 void led_off();
 void led_toggle();
-
-// Suspend tasks for n amount of cycles
-static inline void delay(volatile uint32_t count) {
-    while (count--) asm("nop");
-}
 
 #endif /* _IO_H*/

@@ -2,7 +2,7 @@
 #define _GIC_H
 
 #include <common.h>
-
+#include <stdint.h>
 // ----------------------- GIC Base Addresses -----------------------
 #define GIC_BASE            0xFF840000
 #define GICD_BASE           (GIC_BASE + 0x1000)

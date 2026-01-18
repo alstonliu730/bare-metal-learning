@@ -3,9 +3,13 @@
 #include <mb.h>
 #include <irq.h>
 #include <gic.h>
+#include <stdarg.h>
 
 #define DEFAULT_UART_CLK        7372800
 #define VC_UART_IRQ             0x39
+
+#define BASE_TEN                10
+#define BASE_HEX                16
 
 // Create UART output buffer
 static volatile unsigned char uart_output_buffer[UART_MAX_QUEUE];
@@ -114,7 +118,7 @@ void uart_writeByte(unsigned char ch) {
  * Prints out the integer to UART in base 10 digits.
  */
 void uart_writeInt(int num) {
-    char buf[INT_BUF_SIZE];
+    char buf[HEX_BUF_SIZE];
     int i = 0;
     int isNeg = 0;    
     
@@ -143,6 +147,32 @@ void uart_writeInt(int num) {
         uart_writeByte(buf[--i]);
     }
 }
+
+/**
+ * Prints out the unsigned int to uart based on base
+ */
+void uart_write_uint(uint64_t num, int base) {
+    char buf[HEX_BUF_SIZE];
+    int i = 0;
+
+    // Check if number if 0
+    if (num == 0) {
+        uart_writeByte('0');
+        return;
+    }
+
+    // go through each digit
+    while (num > 0) {
+        int digit = num % base;
+        buf[i++] = (digit < 10) ? '0' + digit : 'a' + (digit - 10);
+        num /= base;
+    }
+
+    // print the reverse
+    while (i > 0) {
+        uart_writeByte(buf[--i]);
+    }
+}   
 
 /**
  * Prints out the integer to UART in hexadecimal format.
@@ -191,6 +221,87 @@ void uart_writeText(char *text) {
     }
 }
 
+/**
+ * Write a string formatted from variadic parameters.
+ */
+void uart_printf(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+
+    // cycle through the format strings
+    while (*fmt) {
+        if (*fmt == '%') {
+            fmt++; // get the character after the %
+
+            switch(*fmt) {
+                case 'd': // Signed decimal
+                case 'i': {
+                    int val = va_arg(args, int); // get next item
+                    uart_writeInt(val);
+                    break;
+                }
+                case 'u': { // unsigned int
+                    uint32_t val = va_arg(args, uint32_t);
+                    uart_write_uint(val, BASE_TEN);
+                    break;
+                }
+                case 'x': // hexadecimal
+                case 'X': {
+                    uint32_t val = va_arg(args, uint32_t);
+                    uart_writeByte('0');
+                    uart_writeByte('x');
+                    uart_writeHex(val);
+                    break;
+                }
+                case 'p': { // Pointer
+                    void *ptr = va_arg(args, void*);
+                    uart_writeByte('0');
+                    uart_writeByte('x');
+                    uart_write_uint((unsigned long) ptr, BASE_HEX);
+                    break;
+                }
+                case 's': { // string
+                    char *str = va_arg(args, char*);
+                    uart_writeText(str ? str : "(null)");
+                    break;
+                }
+                case 'c': { // character
+                    char c = (char) va_arg(args, int);
+                    uart_writeByte(c);
+                    break;
+                }
+                case 'l': { // long format
+                    if (*(++fmt) == 'x') {
+                        uint64_t val = va_arg(args, uint64_t);
+                        uart_writeByte('0');
+                        uart_writeByte('x');
+                        uart_write_uint(val, BASE_HEX);
+                    }
+                    break;
+                }
+                case '%': { // percent literal 
+                    uart_writeByte('%');
+                    break;
+                }
+                default: {
+                    uart_writeByte('%');
+                    uart_writeByte(*fmt);
+                    break;
+                }
+            }
+
+            fmt++;
+        } else {
+            if (*fmt == '\n') {
+                uart_writeByte('\r');
+            }
+            uart_writeByte(*fmt++);
+        }
+    }
+
+    va_end(args);
+    return;
+}
 /* ------------------------------------- PL011 UART ------------------------------------- */
 
 // Setting FIFO fill level

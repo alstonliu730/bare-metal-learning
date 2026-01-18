@@ -2,7 +2,7 @@
 #define _TIMER_H
 
 #include <common.h>
-
+#include <stdint.h>
 // System Timer Addresses
 #define SYS_TIMER_BASE      (PERIPHERAL_BASE + 0x3000)
 #define SYS_TIMER_CS        (SYS_TIMER_BASE + 0x00)
@@ -19,8 +19,9 @@
 uint32_t get_timer32();
 uint64_t get_timer64();
 void timer_wait(uint32_t ms);
-void timer_init();
+void timer1_init();
+void timer2_init();
 
 void handle_timer1();
-
+void handle_timer2();
 #endif /* _TIMER_H */

@@ -4,6 +4,7 @@
 #include <font.h>
 #include <common.h>
 #include <uart.h>
+#include <stdint.h>
 
 uint32_t width, height, fb_pitch, isrgb, fb_size;
 uint8_t *fb_addr;

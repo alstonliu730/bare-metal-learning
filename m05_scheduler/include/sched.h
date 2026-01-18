@@ -2,14 +2,12 @@
 #define _SCHED_H
 
 #include <common.h>
+#include <stdint.h>
 
 #define CPU_CONTEXT_OFFSET          0       // offset of cpu_context
 
 #define THREAD_SIZE                 4096
-#define NR_TASKS                    3
-
-#define INIT_TASK  /*cpu_context*/	{ {0,0,0,0,0,0,0,0,0,0,0,0,0},\
-                   /* state etc */	0,0,1,0 }
+#define NR_TASKS                    64
 
 #define TASK_RUNNING                0
 
@@ -41,15 +39,20 @@ extern task_struct_t* current;
 extern task_struct_t* task[NR_TASKS];
 extern int nr_tasks;
 
-void preempt_disable();
-void preempt_enable();
+extern void preempt_disable();
+extern void preempt_enable();
 
-void schedule();
-void schedule_tail();
+extern void schedule();
+extern void schedule_tail();
 
-void switch_task(task_struct_t* next);
+extern void switch_task(task_struct_t* next);
 
-void timer_tick();
+extern void timer_tick();
 
-void cpu_switch_task(task_struct_t* prev, task_struct_t* next);
+extern void cpu_switch_task(task_struct_t* prev, task_struct_t* next);
+
+
+#define INIT_TASK  /*cpu_context*/	{ {0,0,0,0,0,0,0,0,0,0,0,0,0},\
+                   /* state etc */	0,0,1,0 }
+
 #endif /* _SCHED_H */

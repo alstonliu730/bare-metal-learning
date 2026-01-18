@@ -2,6 +2,8 @@
 #define _IRQ_H
 
 #include <common.h>
+#include <stdint.h>
+
 #define PACTL_CS            0xFE204E00
 #define ARMC_BASE           (PERIPHERAL_BASE + 0xB000)
 
@@ -36,7 +38,6 @@ typedef struct {
 #define PL011_UART_IRQ      (VC_IRQ_BASE_ID + 0x39)
 
 // Functions
-void exception_report(uint64_t type, uint64_t esr_reg, uint64_t elr, uint64_t spsr);
 void irq_el1h_handler();
 
 void irq_enable();

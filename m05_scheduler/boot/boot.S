@@ -4,6 +4,7 @@
 
 .globl __bss_start
 .globl __bss_end
+
 .globl err_hang
 
 .globl _start // Execution starts
@@ -24,7 +25,7 @@ _start_el3:
     msr     SCR_EL3, x0
 
     // Configure EL1 execution state
-    mov     x0, #0x3C5          // SPRSR_EL2: EL1h, D, A, I, F masked initially
+    mov     x0, #0x3C5          // SPRSR_EL3: EL1h, D, A, I, F masked initially
     msr     SPSR_EL3, x0
 
     // Set Return address for EL1
@@ -39,7 +40,7 @@ _start_el3:
     ldr     x0, =SCTLR_VALUE_MMU_DISABLED
     msr     SCTLR_EL1, x0
 
-    // Setup vector table base for EL1 (Not implemented yet)
+    // Setup vector table base for EL1
     ldr     x0, =vector_table
     msr     VBAR_EL1, x0
 
@@ -47,7 +48,7 @@ _start_el3:
 
 start_el1:  // On main core
     // Sets the stack to start below our code
-    ldr     x0, =_start
+    ldr     x0, =__stack_top
     mov     sp, x0
 
     // Clean the BSS section

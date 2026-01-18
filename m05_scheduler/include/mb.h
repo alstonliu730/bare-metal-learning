@@ -1,7 +1,8 @@
 #ifndef _MB_H
 #define _MB_H
 
-#include "common.h"
+#include <common.h>
+#include <stdint.h>
 
 extern volatile unsigned int __attribute__((aligned(16))) mbox[36];
 

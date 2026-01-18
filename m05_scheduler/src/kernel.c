@@ -7,6 +7,7 @@
 #include <common.h>
 #include <mb.h>
 #include <sched.h>
+#include <mmu.h>
 
 // Returns the current Exception Level
 uint32_t get_el() {
@@ -23,7 +24,7 @@ uint32_t get_daif() {
 }
 
 // Get ARM Memory
-void print_arm_memory() {
+static void print_arm_memory() {
     // Setting mbox array
     mbox[0] = 8 * 4; // Size in Bytes
     mbox[1] = MBOX_REQUEST; // REQUEST TAG
@@ -36,18 +37,14 @@ void print_arm_memory() {
     mbox[7] = MBOX_TAG_LAST;
 
     if(mbox_call(MBOX_CH_PROP) && mbox[1] == MBOX_SUCCESS) {
-        uart_writeText("ARM Base Address: 0x");
-        uart_writeHex(mbox[5]);
-        uart_writeText(";\nARM Memory Size: 0x");
-        uart_writeHex(mbox[6]);
-        uart_writeText(";\nARM End Address: 0x");
-        uart_writeHex((mbox[5] + mbox[6]));
-        uart_writeText(";\n");
+        uart_printf("ARM Base Address: %p\n", mbox[5]);
+        uart_printf("ARM Memory Size: %p\n", mbox[6]);
+        uart_printf("ARM End Address: %x\n", (mbox[5] + mbox[6]));
     }
 }
 
 // Get VC Memory
-void print_vc_memory() {
+static void print_vc_memory() {
     // Setting mbox array
     mbox[0] = 8 * 4; // Size in Bytes
     mbox[1] = MBOX_REQUEST; // REQUEST TAG
@@ -59,13 +56,9 @@ void print_vc_memory() {
     mbox[6] = 0;            // size in Bytes
     mbox[7] = MBOX_TAG_LAST;
     if(mbox_call(MBOX_CH_PROP) && mbox[1] == MBOX_SUCCESS) {
-        uart_writeText("VC Base Address: 0x");
-        uart_writeHex(mbox[5]);
-        uart_writeText(";\nVC Memory Size: 0x");
-        uart_writeHex(mbox[6]);
-        uart_writeText(";\nVC End Address: 0x");
-        uart_writeHex((mbox[5] + mbox[6]));
-        uart_writeText(";\n");
+        uart_printf("VC Base Address: %p\n", mbox[5]);
+        uart_printf("VC Memory Size: %p\n", mbox[6]);
+        uart_printf("VC End Address: %x\n", (mbox[5] + mbox[6]));
     }
 }
 
@@ -83,32 +76,51 @@ void main() {
     led_off();
 
     // Timer Initialization
-    timer_init();
+    timer1_init();
 
     // UART 0 Initialization
     led_on();
     uart_init();
     timer_wait(500);
+    uart_printf("\n========================================\n");
+    uart_printf("Raspberry Pi 4 Bare-Metal Kernel\n");
+    uart_printf("========================================\n\n");
 
-    uart_writeText("PL011 UART 0 Initialized\n");
+    uart_printf("PL011 UART 0 Initialized...\n");
     
     timer_wait(1000);
     led_off();
+
+    // Check BSS and Stack 
+    extern unsigned long __bss_start, __bss_end;
+    uart_printf("bss_start: %p\n", &__bss_start);
+    uart_printf("bss_end:   %p\n", &__bss_end);
+    
+    extern unsigned long __stack_top, __stack_bottom;
+    uart_printf("stack_top: %p\n", &__stack_top);
+    uart_printf("stack_bot: %p\n", &__stack_bottom);
+    
+    // Check stack pointer
+    uint64_t sp;
+    __asm__ volatile("mov %0, sp" : "=r"(sp));
+    uart_printf("Current SP: %p\n", sp);
+    
+    // MMU initialization
+    uart_printf("Attempting to initialize MMU...\n");
+    mmu_init();
+    uart_printf("Kernel continuing after MMU enable...\n");
 
     // Frame Buffer Initialization
     led_on();
     fb_init();
     timer_wait(1000);
-    uart_writeText("Frame Buffer Initialized\n");
+    uart_printf("Frame Buffer Initialized...\n");
     led_off();
     
     timer_wait(1000);
-
-    // Print Information
-    print_arm_memory();
-    print_vc_memory();
-
+    
     while(1) {
-        // schedule();
+        uart_printf("Inside Loop\n");
+        timer_wait(1000);
     }
 }

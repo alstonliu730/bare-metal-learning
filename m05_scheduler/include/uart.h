@@ -2,7 +2,8 @@
 #define _UART_H
 
 #include <common.h>
-
+#include <stdarg.h>
+#include <stdint.h>
 #define HEX_STR(h) ((h < 10) ? '0' + h : 'A' + h - 10)
 
 #define INT_BUF_SIZE            10
@@ -65,9 +66,9 @@ typedef enum {
 void uart_writeByte(unsigned char ch);
 void uart_writeInt(int num);
 void uart_writeHex(long num);
-
-// UART 0
 void uart_writeText(char *text);
+void uart_write_uint(uint64_t num, int base);
+void uart_printf(const char *fmt, ...);
 void uart_loadOutputBuffer();
 
 // UART 0 Interrupt

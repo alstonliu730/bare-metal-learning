@@ -2,6 +2,7 @@
 #define _FB_H
 
 #include <common.h>
+#include <stdint.h>
 
 void fb_init();
 void drawPixel(uint32_t x, uint32_t y, uint8_t attr);
