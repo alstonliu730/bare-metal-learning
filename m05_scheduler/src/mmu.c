@@ -33,7 +33,6 @@ static inline uint64_t get_mair();
 static void setup_tcr();
 static void setup_page_tables();
 static void setup_ttbr0();
-static void invalidate_caches();
 static void enable_mmu();
 
 // set the page tables
@@ -196,19 +195,19 @@ static void setup_page_tables() {
     // ------ Level 1: Table Descriptors ------
     uart_printf("   Setting Level 1 Table Descriptors...\n");
     uint64_t desc0 = make_table_descriptor(&lvl2_table_gb0);
-    uart_printf("DEBUG: desc0 = %lx\n", desc0);
+    //uart_printf("DEBUG: desc0 = %lx\n", desc0);
     lvl1_table[0] = desc0;
     
     uint64_t desc1 = make_table_descriptor(&lvl2_table_gb1);
-    uart_printf("DEBUG: desc1 = %lx\n", desc1);
+    //uart_printf("DEBUG: desc1 = %lx\n", desc1);
     lvl1_table[1] = desc1;
     
     uint64_t desc2 = make_table_descriptor(&lvl2_table_gb2);
-    uart_printf("DEBUG: desc2 = %lx\n", desc2);
+    //uart_printf("DEBUG: desc2 = %lx\n", desc2);
     lvl1_table[2] = desc2;
     
     uint64_t desc3 = make_table_descriptor(&lvl2_table_gb3);
-    uart_printf("DEBUG: desc3 = %lx\n", desc3);
+    //uart_printf("DEBUG: desc3 = %lx\n", desc3);
     lvl1_table[3] = desc3;
 
     // ------ Level 2 GB 0: Normal Memory (Low RAM + VC) ------
@@ -334,7 +333,7 @@ void mmu_init() {
     // Debug: Show page table locations
     verify_page_table_alignment();
     timer_wait(1000);
-    
+
     setup_page_tables();
     
     uart_printf("Writing to MAIR, TCR, TTBR0...\n");

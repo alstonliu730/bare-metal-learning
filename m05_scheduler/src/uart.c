@@ -271,11 +271,15 @@ void uart_printf(const char *fmt, ...) {
                     break;
                 }
                 case 'l': { // long format
-                    if (*(++fmt) == 'x') {
+                    char c = *(++fmt);
+                    if (c == 'x') {
                         uint64_t val = va_arg(args, uint64_t);
                         uart_writeByte('0');
                         uart_writeByte('x');
                         uart_write_uint(val, BASE_HEX);
+                    } else if (c == 'u') {
+                        uint64_t val = va_arg(args, uint64_t);
+                        uart_write_uint(val, BASE_TEN);
                     }
                     break;
                 }

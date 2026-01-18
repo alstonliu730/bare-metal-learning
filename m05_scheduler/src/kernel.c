@@ -8,6 +8,7 @@
 #include <mb.h>
 #include <sched.h>
 #include <mmu.h>
+#include <malloc.h>
 
 // Returns the current Exception Level
 uint32_t get_el() {
@@ -106,9 +107,7 @@ void main() {
     uart_printf("Current SP: %p\n", sp);
     
     // MMU initialization
-    uart_printf("Attempting to initialize MMU...\n");
     mmu_init();
-    uart_printf("Kernel continuing after MMU enable...\n");
 
     // Frame Buffer Initialization
     led_on();
@@ -119,8 +118,21 @@ void main() {
     
     timer_wait(1000);
     
-    while(1) {
-        uart_printf("Inside Loop\n");
-        timer_wait(1000);
+    allocator_init();
+
+    // Check if allocator works
+    int* arr = (int *) malloc(sizeof(int) * 8);
+    uart_printf("arr pointer: %p\n", arr);
+    arr[3] = 1;
+    // check content
+    for(int i = 0; i < 8; i++) {
+        uart_printf("arr[%d] = %d\n", i, arr[i]);
+    }
+    // Check free
+    free((void*) arr);
+    arr = NULL;
+
+    print_pool_boundaries();
+    while(1) { 
     }
 }
