@@ -11,19 +11,24 @@ uint32_t get_timer32() {
 }
 
 uint64_t get_timer64() {
-    uint64_t timer_hi = mmio_read(SYS_TIMER_CHI);
-    uint64_t res = mmio_read(SYS_TIMER_CLO);
-
-    res |= (timer_hi << 32);
-    return res;
+    return (uint64_t) ((((uint64_t) mmio_read(SYS_TIMER_CHI)) << 32) | mmio_read(SYS_TIMER_CLO));
 }
 
-void timer_wait(uint32_t ms) {
-    uint32_t start = get_timer32();
-    uint32_t curr = start;
+void wait_ms(uint64_t ms) {
+    uint64_t start = get_timer64();
+    uint64_t curr = start;
     
     while (curr - start < (ms * 1000)) {
-        curr = get_timer32();
+        curr = get_timer64();
+    }
+}
+
+void wait_us(uint64_t us) {
+    uint64_t start = get_timer64();
+    uint64_t curr = start;
+    
+    while (curr - start < us) {
+        curr = get_timer64();
     }
 }
 

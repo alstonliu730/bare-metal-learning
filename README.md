@@ -30,7 +30,7 @@ To install it, find the appropriate version for your computer. Afterwards, unzip
 Once you unpack the compiler, you must add it to your `.bashrc` file. For example, add the following line to the end of your `.bashrc` (replace `/path/to/compiler/bin` with the actual path to your compiler's `bin` directory).
 
 ```bash
-export PATH = /path/to/compiler/bin:$PATH
+export PATH=/path/to/compiler/bin:$PATH
 ```
 
 This file is automatically *sourced* and its contents are executed when you open a new interactive *bash* shell. This may be different when using a *login* shell. Here's a great [post](https://stackoverflow.com/questions/415403/whats-the-difference-between-bashrc-bash-profile-and-environment) talking about the shell. 

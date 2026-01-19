@@ -9,6 +9,7 @@
 #include <sched.h>
 #include <mmu.h>
 #include <malloc.h>
+#include <dht-11.h>
 
 // Returns the current Exception Level
 uint32_t get_el() {
@@ -82,57 +83,46 @@ void main() {
     // UART 0 Initialization
     led_on();
     uart_init();
-    timer_wait(500);
+    wait_ms(500);
     uart_printf("\n========================================\n");
     uart_printf("Raspberry Pi 4 Bare-Metal Kernel\n");
-    uart_printf("========================================\n\n");
+    uart_printf("========================================\n");
 
     uart_printf("PL011 UART 0 Initialized...\n");
     
-    timer_wait(1000);
+    wait_ms(1000);
     led_off();
-
-    // Check BSS and Stack 
-    extern unsigned long __bss_start, __bss_end;
-    uart_printf("bss_start: %p\n", &__bss_start);
-    uart_printf("bss_end:   %p\n", &__bss_end);
-    
-    extern unsigned long __stack_top, __stack_bottom;
-    uart_printf("stack_top: %p\n", &__stack_top);
-    uart_printf("stack_bot: %p\n", &__stack_bottom);
-    
-    // Check stack pointer
-    uint64_t sp;
-    __asm__ volatile("mov %0, sp" : "=r"(sp));
-    uart_printf("Current SP: %p\n", sp);
     
     // MMU initialization
+    led_on();
     mmu_init();
+    wait_ms(500);
+    led_off();
 
     // Frame Buffer Initialization
     led_on();
+    wait_ms(1000);
     fb_init();
-    timer_wait(1000);
     uart_printf("Frame Buffer Initialized...\n");
     led_off();
     
-    timer_wait(1000);
+    wait_ms(1000);
     
+    // Memory Allocator 
     allocator_init();
-
-    // Check if allocator works
-    int* arr = (int *) malloc(sizeof(int) * 8);
-    uart_printf("arr pointer: %p\n", arr);
-    arr[3] = 1;
-    // check content
-    for(int i = 0; i < 8; i++) {
-        uart_printf("arr[%d] = %d\n", i, arr[i]);
-    }
-    // Check free
-    free((void*) arr);
-    arr = NULL;
-
     print_pool_boundaries();
+
+    // DHT11 Temperature Readings
+    int* dht_data = (int *) malloc(sizeof(int) * MAX_DHT_INPUT);
+    uart_printf("DHT11 Data: \n");
     while(1) { 
+        read_dht11_data(dht_data);
+        
+        // print it out
+        uart_printf("\033[2A");
+        uart_printf("Temperature: %d.%d C\n", dht_data[2], dht_data[3]);
+        uart_printf("Humidity: %d.%d %%\n", dht_data[0], dht_data[1]);
+
+         wait_ms(2000);  // DHT11 needs ~1-2 sec between reads
     }
 }

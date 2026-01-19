@@ -28,4 +28,4 @@ kernel8.img: $(BOOT_SRC)/link.ld $(OFILES)
 	$(OBJCOPY) -O binary $(BUILD_SRC)/kernel8.elf kernel8.img
 
 clean:
-	rm -f $(BUILD_SRC)/kernel8.elf $(BUILD_SRC)/*.o *.img > /dev/null 2> /dev/null || true
+	rm -f $(BUILD_SRC)/kernel8.elf $(BUILD_SRC)/*.o $(BUILD_SRC)/*.su *.img > /dev/null 2> /dev/null || true

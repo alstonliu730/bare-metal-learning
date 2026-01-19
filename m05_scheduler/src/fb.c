@@ -60,7 +60,7 @@ void fb_init() {
     mbox[34] = MBOX_TAG_LAST;
 
     if (mbox_call(MBOX_CH_PROP) && mbox[1] == MBOX_SUCCESS) {
-        //uart_writeText("Frame Buffer Initialization Success\n");
+        uart_printf("FrameBuffer Initialized Successfully.\n");
         // Check individual tag responses
         if ((mbox[27] & MBOX_SUCCESS) && mbox[28] != 0) {
             fb_addr = (uint8_t *)((uintptr_t)(mbox[28] & 0x3FFFFFFF));
@@ -71,7 +71,7 @@ void fb_init() {
             isrgb = mbox[24];
         }
     } else {
-        //uart_writeText("Frame Buffer Init Failed\n");
+        uart_writeText("FrameBuffer Initialization Failed.\n");
     }
 }
 

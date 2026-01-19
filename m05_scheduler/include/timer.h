@@ -18,7 +18,9 @@
 
 uint32_t get_timer32();
 uint64_t get_timer64();
-void timer_wait(uint32_t ms);
+void wait_ms(uint64_t ms);
+void wait_us(uint64_t us);
+
 void timer1_init();
 void timer2_init();
 

@@ -1,9 +1,6 @@
 #include <gpio.h>
 #include <common.h>
 #include <stdint.h>
-#define PULL_NONE 0
-#define PULL_UP   1
-#define PULL_DOWN 2
 
 #define LED_PIN   42
 
@@ -54,6 +51,13 @@ uint8_t gpio_clear (unsigned int pin, unsigned int value) {
 uint8_t gpio_pull (unsigned int pin, unsigned int value) {
     return gpio_call(pin, value, GPPUPPDN0, 2, GPIO_MAX_PIN);
 }
+
+uint32_t gpio_read(unsigned int pin) {
+    if (pin > 32) {
+        return (mmio_read(GPLEV1) >> (pin - 32)) & 0b1;
+    }
+    return (mmio_read(GPLEV0) >> pin) & 0b1;
+}   
 
 // Defines the GPIO pin's operation mode. 
 // See Section 5.3 in BCM2711 ARM Peripherals

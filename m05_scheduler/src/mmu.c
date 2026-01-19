@@ -267,7 +267,7 @@ static void setup_page_tables() {
     }
     
     uart_printf("MMU Page Tables built successfully.\n");
-    timer_wait(1000);
+    wait_ms(1000);
 }
 
 /**
@@ -332,15 +332,15 @@ void mmu_init() {
     
     // Debug: Show page table locations
     verify_page_table_alignment();
-    timer_wait(1000);
+    wait_ms(1000);
 
     setup_page_tables();
     
     uart_printf("Writing to MAIR, TCR, TTBR0...\n");
-    timer_wait(1000);
+    wait_ms(1000);
     setup_mair();
     setup_tcr();
-    timer_wait(1000);
+    wait_ms(1000);
     setup_ttbr0();
     enable_mmu();
     
