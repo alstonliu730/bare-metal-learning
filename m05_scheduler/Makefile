@@ -3,14 +3,17 @@ BUILD_SRC = build
 SRC_DIR	= src
 INCLUDE_DIR = -I include
 
+# Detect WSL and add .exe suffix if needed
+TOOLCHAIN_SUFFIX := $(if $(findstring WSL,$(shell uname -r)),.exe,)
+
 CFILES = $(wildcard $(SRC_DIR)/*.c)
 SFILES = $(wildcard $(BOOT_SRC)/*.S)
 OFILES = $(CFILES:$(SRC_DIR)/%.c=$(BUILD_SRC)/%.o) $(SFILES:$(BOOT_SRC)/%.S=$(BUILD_SRC)/%.o)
 
 GCCFLAGS = $(INCLUDE_DIR) -Wall -Wextra -O1 -ffreestanding -nostdlib -nostartfiles -mstrict-align
-GCC = aarch64-none-elf-gcc
-LINK = aarch64-none-elf-ld
-OBJCOPY = aarch64-none-elf-objcopy
+GCC = aarch64-none-elf-gcc$(TOOLCHAIN_SUFFIX)
+LINK = aarch64-none-elf-ld$(TOOLCHAIN_SUFFIX)
+OBJCOPY = aarch64-none-elf-objcopy$(TOOLCHAIN_SUFFIX)
 
 all: clean kernel8.img
 
