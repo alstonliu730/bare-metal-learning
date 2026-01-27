@@ -18,22 +18,21 @@
  * │ 0xC0000000-0xFFFFFFFF │    3     │ GB3: RAM + Peripherals       │
  * └────────────────────┴─────────────┴──────────────────────────────┘
  */
-
-#define HIGH_MEM_GB1        0x40000000ULL
-#define HIGH_MEM_GB2        0x80000000ULL
-#define HIGH_MEM_GB2_MID    (HIGH_MEM_GB2 + 0x20000000ULL)
-#define HIGH_MEM_GB3        0xC0000000ULL
-#define PERIPHERAL_START    0xFC000000ULL
+// Cache information
+static uint64_t ccsidr_el1;
+static uint64_t cache_line_size;
+static uint64_t num_set;
+static uint64_t c_assoc;
 
 // Function declarations
 static void zero_page_table(page_table_t *table);
-// uint64_t make_table_descriptor(void *next_table_addr);
 static inline uint64_t make_block_descriptor(uint64_t phys_addr, uint64_t attributes);
 static inline uint64_t get_mair();
 static void setup_tcr();
 static void setup_page_tables();
 static void setup_ttbr0();
 static void enable_mmu();
+static void dcache_init();
 
 // set the page tables
 // static page_table_t lvl0_table;
@@ -219,7 +218,7 @@ static void setup_page_tables() {
         __asm__ volatile("b err_hang");
     }
     
-    uart_printf("   Level 2 GB 0 (Normal Memory)...\n");
+    uart_printf("   Level 2 GB 0 (Normal Memory & VC Device Memory)...\n");
     for (int i = 0; i < PT_ENTRIES; i++) {
         uint64_t phys_addr = (uint64_t)i << BLOCK_SHIFT; // i * 2MB
 
@@ -283,7 +282,6 @@ static void setup_ttbr0() {
         __asm__ volatile("b err_hang");
     }
 
-    uart_printf("TTBR0_EL1 = %lx\n", ttbr0_value);
     __asm__ volatile("msr TTBR0_EL1, %0":: "r"(ttbr0_value));
 }
 
@@ -298,8 +296,14 @@ static void setup_ttbr0() {
  * - TTBR0_EL1 loaded
  */
 static void enable_mmu(void) {
-    uart_printf("Enabling MMU...\n");
+    // uart_printf("Enabling MMU...\n");
     
+    // invalidate all instruction cache to Point of Unification
+    __asm__ volatile("ic iallu" ::: "memory");
+    
+    // wait for all invalidation to complete
+    __asm__ volatile ("dsb ish" ::: "memory");
+
     // ensure all previous register writes are visible
     __asm__ volatile("isb" ::: "memory");
 
@@ -312,8 +316,8 @@ static void enable_mmu(void) {
     //    C bit [2]  = Enable data cache
     //    I bit [12] = Enable instruction cache
     sctlr_value |= SCTLR_MMU_ENABLED;   // M - MMU enable
-    // sctlr_value |= SCTLR_D_CACHE_ENABLED;   // C - Data cache enable
-    // sctlr_value |= SCTLR_I_CACHE_ENABLED;  // I - Instruction cache enable
+    sctlr_value |= SCTLR_D_CACHE_ENABLED;   // C - Data cache enable
+    sctlr_value |= SCTLR_I_CACHE_ENABLED;  // I - Instruction cache enable
     
     // Write back to SCTLR_EL1
     __asm__ volatile("msr SCTLR_EL1, %0" :: "r"(sctlr_value));
@@ -322,6 +326,49 @@ static void enable_mmu(void) {
     //    ISB forces these changes to be seen by the next instruction
     __asm__ volatile("isb" ::: "memory");
 }
+
+/**
+ * Invalidate the data cache in L1 using the Set-Way
+ */
+static void dcache_init(void) {
+    // Set Cache Level to L1 D Cache (0x0)
+    uint64_t cache_lvl = 0x0; 
+    __asm__ volatile("msr CSSELR_EL1, %0" :: "r"(cache_lvl));
+
+    // Read Cache Size ID
+    __asm__ volatile("mrs %0, CCSIDR_EL1" : "=r"(ccsidr_el1));
+
+    // get cache line size (log_2 (16) = 4, reg = 0)
+    //                 (log_2 (32) = 5, reg = 1)
+    cache_line_size = (ccsidr_el1 & BIT_MASK(2,0)) + 0x4;
+
+    // get cache set num => (x2 = x3 & (x4 >> 13)) [x3 = 0x7FFF]
+    // x2 = (num_set - 1)
+    num_set = (ccsidr_el1 & BIT_MASK(27, 13)) >> 13;
+
+    // get cache associativity
+    // x3 = (cache associative - 1)
+    c_assoc = (ccsidr_el1 & BIT_MASK(12, 3)) >> 3;
+
+    // way shift
+    uint32_t way_shift = __builtin_clz((uint32_t)c_assoc);
+
+    // Invalidate cache line via set way
+    for(uint32_t way_count = 0; way_count <= c_assoc; way_count++) {
+        for(uint32_t set_count = 0; set_count <= num_set; set_count++) {
+            // Find operand with set and way
+            uint64_t way_val = LSHIFT(way_count, way_shift) | cache_lvl;
+            uint64_t set_val = LSHIFT(set_count, cache_line_size);
+            uint64_t operand = way_val | set_val;
+
+            // invalidate the L1 D_Cache
+            __asm__ volatile("dc isw, %0" :: "r"(operand));
+        }
+    }
+    
+    // synchronize everything
+    __asm__ volatile("dsb sy" ::: "memory");
+}   
 
 /**
  * Complete MMU initialization sequence
@@ -336,12 +383,14 @@ void mmu_init() {
 
     setup_page_tables();
     
-    uart_printf("Writing to MAIR, TCR, TTBR0...\n");
+    uart_printf("Writing to MAIR, TCR, TTBR0 & invalidating data cache...\n");
     wait_ms(1000);
     setup_mair();
     setup_tcr();
     wait_ms(1000);
     setup_ttbr0();
+    wait_ms(1000);
+    dcache_init();
     enable_mmu();
     
     uart_printf("\n=== MMU ENABLED SUCCESSFULLY ===\n");
@@ -361,4 +410,52 @@ void mmu_init() {
     uart_printf("    MMU (M):    %s\n", (sctlr & (1 << 0)) ? "ON" : "OFF");
     uart_printf("    DCache (C): %s\n", (sctlr & (1 << 2)) ? "ON" : "OFF");
     uart_printf("    ICache (I): %s\n", (sctlr & (1 << 12)) ? "ON" : "OFF");
+    uart_printf("==================================\n");
+}
+
+/**
+ * Clean the cache based on the virtual address. 
+ * Writes the "dirty" cache line back to memory. 
+ */
+inline void clean_cache(uintptr_t start, uintptr_t end) {
+    // check if start is cache line aligned
+    if (start & (LSHIFT(1, cache_line_size) - 1)) {
+        uart_printf("clean_cache: \'start\' is not cache line aligned.\n");
+        start &= CLR_MASK(cache_line_size, 0);
+    }
+
+    // check if end is cache line aligned
+    if (end & (LSHIFT(1, cache_line_size) - 1)) {
+        uart_printf("clean_cache: \'end\' is not cache line aligned.\n");
+        end &= CLR_MASK(cache_line_size, 0);
+    }
+    
+    // clean each line of the data cache via Virtual Address
+    for(uintptr_t p = start; p <= end; p += LSHIFT(1, cache_line_size)) {
+        __asm__ volatile("dc cvac, %0" :: "r"(p));
+    }
+}
+
+
+/**
+ * Invalidate the cache based on the virtual address. 
+ * Refetch clean data from memory to the cache line
+ */
+inline void inv_cache(uintptr_t start, uintptr_t end) {
+    // check if start is cache line aligned
+    if (start & (LSHIFT(1, cache_line_size) - 1)) {
+        uart_printf("inv_cache: \'start\' is not cache line aligned.\n");
+        start &= CLR_MASK(cache_line_size, 0);
+    }
+
+    // check if end is cache line aligned
+    if (end & (LSHIFT(1, cache_line_size) - 1)) {
+        uart_printf("inv_cache: \'end\' is not cache line aligned.\n");
+        end &= CLR_MASK(cache_line_size, 0);
+    }
+    
+    // clean each line of the data cache via Virtual Address
+    for(uintptr_t p = start; p <= end; p += LSHIFT(1, cache_line_size)) {
+        __asm__ volatile("dc ivac, %0" :: "r"(p));
+    }
 }

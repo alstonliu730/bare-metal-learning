@@ -5,12 +5,12 @@
 #include <timer.h>
 #include <irq.h>
 
-void read_dht11_data(int* data) {
+int read_dht11_data(int* data) {
     // uart_printf("Attempting to read dht11 data...\n");
     // check if data is not null
     if (data == NULL) {
         uart_printf("read_dht11_data: invalid data array input address.\n");
-        return;
+        return 1;
     }
 
     uint8_t laststate = 1;
@@ -40,11 +40,8 @@ void read_dht11_data(int* data) {
         counter = 0;
         uint64_t now = get_timer64();
         // keep count of how many microseconds occurred
-        while (gpio_read(DHT_GPIO_PIN) == laststate) {
+        while (gpio_read(DHT_GPIO_PIN) == laststate && counter < DHT_TIMEOUT) {
             counter = get_timer64() - now;
-            if (counter >= DHT_TIMEOUT) {
-                break;
-            }
         }
 
         // update the last state
@@ -72,11 +69,10 @@ void read_dht11_data(int* data) {
         uart_printf("Invalid data, clearing data array.\n");
         uart_printf("[0] = %d, [1] = %d, [2] = %d, [3] = %d, [4] = %d\n", 
                         data[0], data[1], data[2], data[3], data[4]);
-        // memset(data, 0, sizeof(int) * MAX_DHT_INPUT); // clean data
-        return;
+        return 1;
     } 
     irq_enable();
 
     // uart_printf("Data Received\n");
-    return;
+    return 0;
 }

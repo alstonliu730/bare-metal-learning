@@ -47,18 +47,15 @@ static void init_metadata() {
         };
         meta128[i] = (metadata_t) {
             .free = 1,
-            .next = (i == MAX_BLOCKS_PER_POOL - 1) ? NULL : &meta128[i + 1], 
-            .prev = (i == 0) ? NULL : &meta128[i - 1]
+            .next = (i == MAX_BLOCKS_PER_POOL - 1) ? NULL : &meta128[i + 1],
         };
         meta256[i] = (metadata_t) {
             .free = 1, 
-            .next = (i == MAX_BLOCKS_PER_POOL - 1) ? NULL : &meta256[i + 1], 
-            .prev = (i == 0) ? NULL : &meta256[i - 1]
+            .next = (i == MAX_BLOCKS_PER_POOL - 1) ? NULL : &meta256[i + 1]
         };
         meta512[i] = (metadata_t) {
             .free = 1,
-            .next = (i == MAX_BLOCKS_PER_POOL - 1) ? NULL : &meta512[i + 1], 
-            .prev = (i == 0) ? NULL : &meta512[i - 1]
+            .next = (i == MAX_BLOCKS_PER_POOL - 1) ? NULL : &meta512[i + 1]
         };
     }
 
@@ -167,7 +164,7 @@ void* malloc(size_t nBytes) {
     } else {
         pool_size = 1 << (32 - __builtin_clz(nBytes - 1));
     }
-    uart_printf("Determined pool size: %ld\n", pool_size);
+    uart_printf("Determined pool size: %d\n", pool_size);
     
     // Loop through to find the memory pool
     int pool_index = -1;

@@ -82,6 +82,7 @@ void assign_target(uint32_t irq) {
     mmio_write(target, val);
 }
 
+// Determines if the interrupt is edge-triggered or sensitive level
 void set_configuration(uint32_t irq, gicd_cfg_flags_t flag) {
     uint32_t reg_num = irq / 16;
     uint32_t bit_pos = (irq % 16) * 2;

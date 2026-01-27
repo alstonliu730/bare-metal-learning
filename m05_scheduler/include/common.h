@@ -7,7 +7,7 @@
 #define PERIPHERAL_BASE         0xFE000000
 
 // Bit manipulation techniques
-#define SHIFT(val, n)           ((uint64_t)(val) << (n))
+#define LSHIFT(val, n)           ((uint64_t)(val) << (n))
 #define BIT(n)                  (1ULL << (n))
 #define CLR_BIT(n)              (~BIT((n)))
 #define BIT_MASK(msb, lsb)      ((BIT((msb) - (lsb) + 1) - 1) << lsb)

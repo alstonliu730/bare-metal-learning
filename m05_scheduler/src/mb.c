@@ -1,6 +1,7 @@
 #include <mb.h>
 #include <uart.h>
 #include <gpio.h>
+#include <mmu.h>
 
 // The buffer must be 16-byte aligned as only the upper 28 bits of the address can be passed via the mailbox
 volatile unsigned int __attribute__((aligned(16))) mbox[36];
@@ -12,6 +13,9 @@ volatile unsigned int __attribute__((aligned(16))) mbox[36];
  * Sends the 16-byte aligned array to the mailbox for the framebuffer.
  */
 unsigned int mbox_call(unsigned char ch) {
+    // Push dirty data from cache to memory
+    clean_cache((uintptr_t) &mbox, (uintptr_t) &mbox[35]);
+    
     // Get the 28-bit (MSB) aligned address of the mailbox buffer (MSB)
     unsigned int msb = (unsigned int)(((long) &mbox) & ~0xF);
 
@@ -25,7 +29,7 @@ unsigned int mbox_call(unsigned char ch) {
         // Wait until the mailbox is not full
         uart_writeText("MBOX FULL\n");
     }
-
+    
     // Write the address to the mailbox
     mmio_write(MBOX_WRITE, r);
 
@@ -35,7 +39,13 @@ unsigned int mbox_call(unsigned char ch) {
             // Wait until the mailbox is not empty
         }
 
-        if (r == mmio_read(MBOX_READ)) return (mbox[1] == MBOX_RESPONSE);
+        if (r == mmio_read(MBOX_READ)) {
+            // invalidate cache copies (after GPU writes)
+            inv_cache((uintptr_t) &mbox, (uintptr_t) &mbox[35]);
+
+            // return if the response is successful
+            return (mbox[1] == MBOX_RESPONSE);
+        }
     }
     
     return 0; // Should never reach here

@@ -434,9 +434,6 @@ static void get_chars() {
 void uart_rx_handler() {
     // Push characters into Transmit FIFO
     get_chars();
-
-    // clear the interrupt
-    mmio_write(UART0_ICR, UART_RX_BIT);
 }
 
 /**

@@ -10,7 +10,7 @@
 #define BLOCK_SHIFT         (PAGE_SHIFT + TABLE_SHIFT)
 
 #define PAGE_SIZE           4096
-#define BLOCK_SIZE          SHIFT(1, BLOCK_SHIFT)
+#define BLOCK_SIZE          LSHIFT(1, BLOCK_SHIFT)
 #define PT_ENTRIES          512
 
 // page table with 4KB alignment
@@ -35,17 +35,17 @@ typedef uint64_t page_table_t[PT_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 // ============================================================
 // ACCESS PERMISSIONS [7:6] - AP
 // ============================================================
-#define AP_RW_EL1                   SHIFT(0b00, 6)
-#define AP_RW_ALL                   SHIFT(0b01, 6)
-#define AP_RO_EL1                   SHIFT(0b10, 6)
-#define AP_RO_ALL                   SHIFT(0b11, 6)
+#define AP_RW_EL1                   LSHIFT(0b00, 6)
+#define AP_RW_ALL                   LSHIFT(0b01, 6)
+#define AP_RO_EL1                   LSHIFT(0b10, 6)
+#define AP_RO_ALL                   LSHIFT(0b11, 6)
 
 // ============================================================
 // SHAREABILITY [9:8]
 // ============================================================
-#define SH_NON_SHAREABLE            SHIFT(0b00, 8)
-#define SH_OUTER_SHAREABLE          SHIFT(0b10, 8)
-#define SH_INNER_SHAREABLE          SHIFT(0b11, 8)
+#define SH_NON_SHAREABLE            LSHIFT(0b00, 8)
+#define SH_OUTER_SHAREABLE          LSHIFT(0b10, 8)
+#define SH_INNER_SHAREABLE          LSHIFT(0b11, 8)
 
 // ============================================================
 // ACCESS FLAG BIT [10]
@@ -79,20 +79,20 @@ typedef uint64_t page_table_t[PT_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 
 // Device Memory: nGnRnE (most restrictive)
 #define MAIR_DEVICE_nGnRnE              0
-#define MAIR_DEVICE_nGnRnE_VAL          SHIFT(0x00, MAIR_DEVICE_nGnRnE * 8)
+#define MAIR_DEVICE_nGnRnE_VAL          LSHIFT(0x00, MAIR_DEVICE_nGnRnE * 8)
 
 #define MAIR_DEVICE_nGnRE               1
-#define MAIR_DEVICE_nGnRE_VAL           SHIFT(0x04, MAIR_DEVICE_nGnRE * 8)
+#define MAIR_DEVICE_nGnRE_VAL           LSHIFT(0x04, MAIR_DEVICE_nGnRE * 8)
 
 #define MAIR_DEVICE_GRE                 2
-#define MAIR_DEVICE_GRE_VAL             SHIFT(0x0C, MAIR_DEVICE_GRE * 8)
+#define MAIR_DEVICE_GRE_VAL             LSHIFT(0x0C, MAIR_DEVICE_GRE * 8)
 
 // Normal Memory: Inner/Outer Write-Back, Read-Allocate, Write-Allocate
 #define MAIR_NORMAL_NC                  3
-#define MAIR_NORMAL_NC_VAL              SHIFT(0x44, MAIR_NORMAL_NC * 8)
+#define MAIR_NORMAL_NC_VAL              LSHIFT(0x44, MAIR_NORMAL_NC * 8)
 
 #define MAIR_NORMAL_MEMORY              4
-#define MAIR_NORMAL_MEMORY_VAL          SHIFT(0xFF, MAIR_NORMAL_MEMORY * 8)
+#define MAIR_NORMAL_MEMORY_VAL          LSHIFT(0xFF, MAIR_NORMAL_MEMORY * 8)
 
 // set MAIR VALUE 
 #define MAIR_VALUE \
@@ -125,38 +125,38 @@ typedef uint64_t page_table_t[PT_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 /**
  * EPD0 [7] - controls whether a translation table walk is performed on a TLB Miss
  */
-#define EPD0_WALK_ENABLE        SHIFT(0b0, 7)
-#define EPD0_WALK_DISABLE       SHIFT(0b1, 7)
+#define EPD0_WALK_ENABLE        LSHIFT(0b0, 7)
+#define EPD0_WALK_DISABLE       LSHIFT(0b1, 7)
 
 /**
  * IRGN0 [9:8] - Inner cacheability attr. for memory associated with transaltion table walks.]
  */
-#define IRGN0_NC                SHIFT(0b00, 8)
-#define IRGN0_WBWA              SHIFT(0b01, 8)
-#define IRGN0_WT                SHIFT(0b10, 8)
-#define IRGN0_WBnWA             SHIFT(0b11, 8)
+#define IRGN0_NC                LSHIFT(0b00, 8)
+#define IRGN0_WBWA              LSHIFT(0b01, 8)
+#define IRGN0_WT                LSHIFT(0b10, 8)
+#define IRGN0_WBnWA             LSHIFT(0b11, 8)
 
 /**
  * ORGN0 [11:10] - Outer cacheability attr. for memory associated with transaltion table walks.
  */
-#define ORGN0_NC                SHIFT(0b00, 10)
-#define ORGN0_WBWA              SHIFT(0b01, 10)
-#define ORGN0_WT                SHIFT(0b10, 10)
-#define ORGN0_WBnWA             SHIFT(0b11, 10)
+#define ORGN0_NC                LSHIFT(0b00, 10)
+#define ORGN0_WBWA              LSHIFT(0b01, 10)
+#define ORGN0_WT                LSHIFT(0b10, 10)
+#define ORGN0_WBnWA             LSHIFT(0b11, 10)
 
 /**
  * SH0 [13:12] - SHAREABILITY attr for memory TCR
  */
-#define SH0_NON_SHAREABLE        SHIFT(0b00, 12)
-#define SH0_OUTER_SHAREABLE      SHIFT(0b10, 12)
-#define SH0_INNER_SHAREABLE      SHIFT(0b11, 12)
+#define SH0_NON_SHAREABLE        LSHIFT(0b00, 12)
+#define SH0_OUTER_SHAREABLE      LSHIFT(0b10, 12)
+#define SH0_INNER_SHAREABLE      LSHIFT(0b11, 12)
 
 /**
  * TG0 [15:14] - Granule Size
  */
-#define TG0_4KB                 SHIFT(0b00, 14)
-#define TG0_64KB                SHIFT(0b01, 14)
-#define TG0_16KB                SHIFT(0b10, 14)
+#define TG0_4KB                 LSHIFT(0b00, 14)
+#define TG0_64KB                LSHIFT(0b01, 14)
+#define TG0_16KB                LSHIFT(0b10, 14)
 
 /**
  * T1SZ_VAL [5:0] - Size offset of the memory region used for TTBR1_EL1
@@ -165,80 +165,79 @@ typedef uint64_t page_table_t[PT_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
  * 
  * @warning This is hardcoded for my 39-bit VA
  */
-#define T1SZ_VALUE              SHIFT(25, 16)
+#define T1SZ_VALUE              LSHIFT(25, 16)
 
 /**
  * A1 [22] - Selects TTBR0 or TTBR1 as ASID (Address Space Identifier)
  */
-#define A1_TTBR0                SHIFT(0b0, 22)
-#define A1_TTBR1                SHIFT(0b1, 22)
+#define A1_TTBR0                LSHIFT(0b0, 22)
+#define A1_TTBR1                LSHIFT(0b1, 22)
 
 /**
  * EPD1 [23] - controls whether a translation table walk is performed on a TLB Miss (TTBR1)
  */
-#define EPD1_WALK_ENABLE        SHIFT(0b0, 23)
-#define EPD1_WALK_DISABLE       SHIFT(0b1, 23)
+#define EPD1_WALK_ENABLE        LSHIFT(0b0, 23)
+#define EPD1_WALK_DISABLE       LSHIFT(0b1, 23)
 
 /**
  * IRGN1 [25:24] - Inner cacheability attr. for memory associated with transaltion table walks.] (TTBR1)
  */
-#define IRGN1_NC                SHIFT(0b00, 24)
-#define IRGN1_WBWA              SHIFT(0b01, 24)
-#define IRGN1_WT                SHIFT(0b10, 24)
-#define IRGN1_WBnWA             SHIFT(0b11, 24)
+#define IRGN1_NC                LSHIFT(0b00, 24)
+#define IRGN1_WBWA              LSHIFT(0b01, 24)
+#define IRGN1_WT                LSHIFT(0b10, 24)
+#define IRGN1_WBnWA             LSHIFT(0b11, 24)
 
 /**
  * ORGN1 [27:26] - Outer cacheability attr. for memory associated with transaltion table walks. (TTBR1)
  */
-#define ORGN1_NC                SHIFT(0b00, 26)
-#define ORGN1_WBWA              SHIFT(0b01, 26)
-#define ORGN1_WT                SHIFT(0b10, 26)
-#define ORGN1_WBnWA             SHIFT(0b11, 26)
+#define ORGN1_NC                LSHIFT(0b00, 26)
+#define ORGN1_WBWA              LSHIFT(0b01, 26)
+#define ORGN1_WT                LSHIFT(0b10, 26)
+#define ORGN1_WBnWA             LSHIFT(0b11, 26)
 
 /**
  * SH1 [29:28] - SHAREABILITY attr for memory (TTBR1)
  */
-#define SH1_NON_SHAREABLE        SHIFT(0b00, 28)
-#define SH1_OUTER_SHAREABLE      SHIFT(0b10, 28)
-#define SH1_INNER_SHAREABLE      SHIFT(0b11, 28)
+#define SH1_NON_SHAREABLE        LSHIFT(0b00, 28)
+#define SH1_OUTER_SHAREABLE      LSHIFT(0b10, 28)
+#define SH1_INNER_SHAREABLE      LSHIFT(0b11, 28)
 
 /**
  * TG1 [31:30] - Granule Size for TTBR1
  */
-#define TG1_4KB                 SHIFT(0b10, 30)
-#define TG1_64KB                SHIFT(0b11, 30)
-#define TG1_16KB                SHIFT(0b01, 30)
+#define TG1_4KB                 LSHIFT(0b10, 30)
+#define TG1_64KB                LSHIFT(0b11, 30)
+#define TG1_16KB                LSHIFT(0b01, 30)
 
 /**
  * IPS [34:32] - Intermediate Physical Address Size
  */ 
-#define IPS_32                  SHIFT(0b000, 32)
-#define IPS_36                  SHIFT(0b001, 32)
-#define IPS_40                  SHIFT(0b010, 32)
-#define IPS_42                  SHIFT(0b011, 32)
-#define IPS_44                  SHIFT(0b100, 32)
-#define IPS_48                  SHIFT(0b101, 32)
-#define IPS_52                  SHIFT(0b110, 32)
-#define IPS_56                  SHIFT(0b111, 32)
+#define IPS_32                  LSHIFT(0b000, 32)
+#define IPS_36                  LSHIFT(0b001, 32)
+#define IPS_40                  LSHIFT(0b010, 32)
+#define IPS_42                  LSHIFT(0b011, 32)
+#define IPS_44                  LSHIFT(0b100, 32)
+#define IPS_48                  LSHIFT(0b101, 32)
+#define IPS_52                  LSHIFT(0b110, 32)
+#define IPS_56                  LSHIFT(0b111, 32)
 
 /**
  * AS [36] - ASID Size
  */
-#define AS_8                    SHIFT(0b0, 36)
-#define AS_16                   SHIFT(0b1, 36)
+#define AS_8                    LSHIFT(0b0, 36)
+#define AS_16                   LSHIFT(0b1, 36)
 
 /**
  * TBI0 [37] - Top Byte ignored (if top byte is used for address match for TTBR0)
  */
-#define TBI0_USED               SHIFT(0b0, 37)
-#define TBI0_IGN                SHIFT(0b1, 37)
+#define TBI0_USED               LSHIFT(0b0, 37)
+#define TBI0_IGN                LSHIFT(0b1, 37)
 
 /**
  * TBI1 [38] - Top Byte ignored (if top byte is used for address match for TTBR1)
  */
-#define TBI1_USED               SHIFT(0b0, 38)
-#define TBI1_IGN                SHIFT(0b1, 38)
-
+#define TBI1_USED               LSHIFT(0b0, 38)
+#define TBI1_IGN                LSHIFT(0b1, 38)
 
 /**
  * Common Memory Attributes to Block Descriptors
@@ -252,10 +251,18 @@ typedef uint64_t page_table_t[PT_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 #define BLOCK_ATTR_DEVICE_MEMORY \
     (AF_ACCESSED | SH_NON_SHAREABLE | AP_RW_EL1 | ATTR_IDX(MAIR_DEVICE_nGnRE) | XN)
 
+// Memory Map Addresses
+#define HIGH_MEM_GB1        0x40000000ULL
+#define HIGH_MEM_GB2        0x80000000ULL
+#define HIGH_MEM_GB2_MID    (HIGH_MEM_GB2 + 0x20000000ULL)
+#define HIGH_MEM_GB3        0xC0000000ULL
+#define PERIPHERAL_START    0xFC000000ULL
 
 // Initialization function
 void verify_page_table_alignment();
 uint64_t make_table_descriptor(void *next_table_addr);
 void mmu_init();
+void inv_cache(uintptr_t start, uintptr_t end);
+void clean_cache(uintptr_t start, uintptr_t end);
 
 #endif /*_MMU_H*/

@@ -19,5 +19,5 @@
 /**
  * Reads the DHT11 temperature sensor
  */
-void read_dht11_data(int* data);
+int read_dht11_data(int* data);
 #endif /* __DHT_H__*/

@@ -20,7 +20,6 @@ typedef enum {
 typedef struct metadata{
     uint8_t free;
     struct metadata* next;
-    struct metadata* prev;
 } metadata_t;
 
 // memory pool allocator structure

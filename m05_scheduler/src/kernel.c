@@ -103,7 +103,6 @@ void main() {
     led_on();
     wait_ms(1000);
     fb_init();
-    uart_printf("Frame Buffer Initialized...\n");
     led_off();
     
     wait_ms(1000);
@@ -114,15 +113,23 @@ void main() {
 
     // DHT11 Temperature Readings
     int* dht_data = (int *) malloc(sizeof(int) * MAX_DHT_INPUT);
-    uart_printf("DHT11 Data: \n");
-    while(1) { 
-        read_dht11_data(dht_data);
+    
+    // Clear screen without clearing previous output
+    for(int i = 0; i < 16; i++) {
+        uart_printf("\n");
+    }
+    
+    while (1) {
+        uart_printf("\033[2A");  // Cursor to home position
         
-        // print it out
-        uart_printf("\033[2A");
-        uart_printf("Temperature: %d.%d C\n", dht_data[2], dht_data[3]);
-        uart_printf("Humidity: %d.%d %%\n", dht_data[0], dht_data[1]);
-
-         wait_ms(2000);  // DHT11 needs ~1-2 sec between reads
+        if (read_dht11_data(dht_data) == 0) {
+            uart_printf("Temp:  %d.%d C   \n", dht_data[2], dht_data[3]);
+            uart_printf("Humid: %d.%d %%  \n", dht_data[0], dht_data[1]);
+        } else {
+            uart_printf("Read failed      \n");
+            uart_printf("                 \n");
+        }
+        
+        wait_ms(2000);  // DHT11 needs ~1-2 sec between reads
     }
 }
