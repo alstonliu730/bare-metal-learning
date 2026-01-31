@@ -20,5 +20,83 @@ Now the same thing for the next level **L1 Table**. We know that an **L2 Table**
 If you are still confused on this, please use this diagram:
 ![Translation walk of a 48-bit address with Page Table Representation](assets/page_table.png)
 
-To store these page tables, we only need to store the highest level table. In this case we can store the address to the **L1 Table** to **TTBR0_EL1**. Any **invalid entry** will have the first two bits as *0b00*. When the MMU translates the address, it goes through each page table until it reaches a *block entry* or a *page entry* and therefore the *translation walk* is finished.
+To store these page tables, we only need to store the highest level table. In this case we can store the address to the **L1 Table** to **TTBR0_EL1**. Any **invalid entry** will have the first two bits as *0b00*. When the MMU translates the address, it goes through each page table until it reaches a *block entry* or a *page entry* and therefore the *translation walk* is finished. 
+
+## Cacheing 
+Now that we have an understanding of the virtual addressing and how it's broken down, we can explain why and how the cache is used and why it's important to describe the memory regions. In the Raspberry Pi 4B with the ARMv8-A Architecture, it runs a **Modified Harvard Architecture** with separate L1 instruction and data caches. 
+The *L1 cache* are the closest to the core which allows for fast access to data. However, the size is small due to minimization of latency. If the size is large, it is harder to search and consumes the die space in the CPU. Here is a diagram from the ARMv8-A Programmer's Guide
+
+![Core Diagram of Caches](assets/cache-diagram.png)
+
+Cache maintenance definitions for cache coherency: 
+- **Invalidation** - Cache must always be invalidated after reset as it contents are undefined. When the memory outside the cache changes, the cache needs to invalidate it to keep it coherent.
+
+- **Clean** - "Dirty" cache lines, which are data that have been modified by the CPU, needs to be written back to memory keeping the data coherent throughout. Only applicable for data cache is which a write-back policy is used.
+
+- **Zero** - Zeros a block of memory within the cache, without the need to read from the outer domain. Only applies to the data cache too.
+
+### Instruction Cache (I-Cache)
+The Instruction cache is a cache dedicated to fetching the CPU instructions. Since the cache is **fetch-only**, the cache will not have "dirty" lines and is only a **read-only** cache.  It's much easier to maintain and can only be **invalidated**. There is no hardware cache-coherency meaning any new code written to memory it can go through the Data Cache but I-Cache wouldn't see it. Therefore, we need to invalidate instructions to get the right cache data:
+
+| Operation  | Description |
+|----------- |-------------|
+| `IC IALLUIS`  | Invalidate all, to Point of Unification, Inner Shareable |
+| `IC IALLU`    | Invalidate all, to Point of Unification |
+| `IC IVAU`     | Invalidate by Virtual Address to Point of Unification |
+
+The most fundamental difference between the I-cache and D-cache:
+
+| Aspect | I-Cache | D-Cache |
+|--------|---------|---------|
+| CPU Operations | **Fetch only** | Read and Write |
+| Dirty Lines | Never (no writes) | Yes (modified data) |
+| Write-back Required | No | Yes |
+| Clean Operation | Not applicable | Required before invalidate |
+
+Fetching instructions from the RAM can be expensive and using the Instruction Cache can reduce the latency. 
+
+### Data Cache (D-Cache)
+The Data Cache is used to improve memory access performance by storing frequently accessed data close to the processor core. Unlike the instruction cache, the D-Cache handles both **reads** and **writes**, introducing complexity around dirty data, coherency, and maintenance operations.
+
+Here are some key terms:
+
+| Term | Definition |
+|------|------------|
+| **Cache Line** | Smallest loadable unit. Contains contiguous words from memory. |
+| **Set** | Collection of cache lines (one per way) that share the same index. |
+| **Way** | A subdivision of the cache. Each way is indexed identically. |
+| **Valid Bit** | Indicates whether the cache line contains usable data. |
+| **Dirty Bit** | Indicates the cache line has been modified and differs from main memory. |
+
+As data cache can be written back, there are different cache allocation policies to describe when a line should be allocated to the data cache and what happens when a store instruction is executed that hits in the data cache:
+- **Write Allocation (WA)** - Cache line is allocated when a `store` instruction misses. **Note**: that even if we are writing 1 byte, WA will trigger the full cache line read first since cache operates on whole lines.
+- **Read Allocation (RA)** - Cache line is allocated when a `load` instruction misses.
+- **Write-Back (WB)** - When `store` instruction happens, it will update the cache but not update the memory by setting the *dirty* bit. The memory is updated later when the line is *evicted* with an explicit `clean` operation.
+- **Write-Through (WT)** - When `store` instruction happens, it will update the cache and update the memory so that the line is *never* dirty.
+
+With data cache having the ability to write to the cache lines, cache maintenance is very important to keep the correct data, especially when a region of memory is being shared with the GPU, DMA, or other cores. We use data barriers and synchronizations to keep cache coherency. That's when we can **clean** *dirty* cache line or **invalidate** the cache line.
+
+| Operation | Description |
+| --------- | ----------- |
+| `DC CISW` | Clean and invalidate by Set/Way |
+| `DC CIVAC`| Clean and Invalidate by Virtual Address to Point of Coherency|
+| `DC CSW`  | Clean by Set/Way |
+| `DC CVAC` | Clean by Virtual Address to Point of Coherency |
+| `DC CVAU` | Clean by Virtual Address to Point of Unification|
+| `DC ISW`  | Invalidate by Set/Way |
+| `DC IVAC` | Invalidate by Virtual Address, to Point of Coherency |
+| `DC ZVA`  | Cache Zero by Virtual Address |
+
+### General Procedure
+1. Setup Memory Attributes (nGnRnE - Normal WT, RA, WB, WA)
+2. Setup Page Tables (L0 - L3 Tables)
+3. Setting shareability, inner and outer cacheability, size offset, and granule size.
+4. Set the TTBR0_EL1 address to the lowest level (ex. L0/L1 Table)
+5. Cleaning & Invalidating the Data Cache.
+6. Enable Data Cache, Instruction Cache, and MMU in SCTLR_EL1
+
+
+# Resources
+1. ARMv8-A Programmer-Guide - A more detailed description and contains procedures of initializing certain parts of an ARMv8 Architectural System.
+
 

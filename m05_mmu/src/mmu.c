@@ -169,6 +169,7 @@ static uint32_t get_vc_memory() {
     mbox[5] = 0;            // Base Address in Bytes
     mbox[6] = 0;            // size in Bytes
     mbox[7] = MBOX_TAG_LAST;
+    
     if(mbox_call(MBOX_CH_PROP) && mbox[1] == MBOX_SUCCESS) {
         return mbox[5];
     } else {
