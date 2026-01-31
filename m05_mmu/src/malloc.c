@@ -9,7 +9,7 @@ const MemPoolSize mem_sizes[NUM_FIXED_SIZE] = {
 };
 
 // metadata array
-static metadata_t meta16[MAX_BLOCKS_PER_POOL]; // 
+static metadata_t meta16[MAX_BLOCKS_PER_POOL];
 static metadata_t meta32[MAX_BLOCKS_PER_POOL];
 static metadata_t meta64[MAX_BLOCKS_PER_POOL];
 static metadata_t meta128[MAX_BLOCKS_PER_POOL];

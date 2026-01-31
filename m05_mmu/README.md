@@ -95,6 +95,53 @@ With data cache having the ability to write to the cache lines, cache maintenanc
 5. Cleaning & Invalidating the Data Cache.
 6. Enable Data Cache, Instruction Cache, and MMU in SCTLR_EL1
 
+## Memory Allocator
+With this MMU, we can set a certain part of memory as our heap. In embedded systems, we can create a fixed-size memory allocator. Our options can be: 16B, 32B, 64B, 128B, 256B, 512B, 4KB and setting a limit on how many blocks are allocated for each option. 
+
+In our implementation, we create a pool structure to contain the start and end address of each pool with a free linked list and the head of the metadata.
+
+```C
+// memory pool allocator structure
+typedef struct {
+    MemPoolSize block_size;
+    uintptr_t start;
+    uintptr_t end;
+    metadata_t* free_list; // use to pop
+    metadata_t* metadata; // use to store the head of the data
+} pool_t;
+
+// metadata for each block of memory
+typedef struct metadata{
+    uint8_t free;
+    struct metadata* next;
+} metadata_t;
+```
+
+To setup the allocator, we create the meta data and free linked list. After initializing, we can create the `malloc` and `free` function. To decide which pool we use, we can use the builtin compiler function `__builtin_clz`. We subtract the number of bytes by 1 to ensure that if the size is equal to the pool size, we can still determine the pool_size.
+
+```C
+if (nBytes == 0) {
+    return NULL;
+} else if (nBytes < POOL_16) {
+    pool_size = POOL_16;
+} else if (nBytes > POOL_512) {
+    pool_size = POOL_4KB;
+} else {
+    pool_size = 1 << (32 - __builtin_clz(nBytes - 1));
+}
+
+// Loop through to find the memory pool
+int pool_index = -1;
+for (int i = 0; i < NUM_FIXED_SIZE; i++) {
+    if (memory_pool[i].block_size >= pool_size) {
+        pool_index = i;
+    }
+}
+```
+
+To **allocate** memory and find the next free block, we can just `pop` the next entry in the `free list` and set toggle the `free` bit, then return the address of that block.
+
+To **free** the given entry, we can find the memory pool by comparing the range of the given address. Then toggle the `free` status again and add it back to the `free list` in the pool.
 
 # Resources
 1. ARMv8-A Programmer-Guide - A more detailed description and contains procedures of initializing certain parts of an ARMv8 Architectural System.
