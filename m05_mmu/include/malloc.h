@@ -82,7 +82,6 @@ void free(void* ptr);
 /**
  * Get a ptr from the heap through the memory pool.
  * 
- * @param mem_pool the address to the memory pool
  * @param nBytes the number of bytes to allocate
  * 
  * @return the address of the heap-allocated memory 
