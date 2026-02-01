@@ -123,7 +123,13 @@ void main() {
         uart_printf("\033[2A");  // Cursor to home position
         
         if (read_dht11_data(dht_data) == 0) {
-            uart_printf("Temp:  %d.%d C   \n", dht_data[2], dht_data[3]);
+            uint32_t f_temp = (dht_data[2] << 8) | dht_data[3];
+            f_temp *= 9;
+            f_temp /= 5;
+            f_temp += (32 << 8);
+            uint32_t f_temp_frac = f_temp & BIT_MASK(7, 0);
+            uint32_t f_temp_int = (f_temp & BIT_MASK(15, 8)) >> 8;
+            uart_printf("Temp:  %d.%d C (%d.%d F)  \n", dht_data[2], dht_data[3], f_temp_int, f_temp_frac);
             uart_printf("Humid: %d.%d %%  \n", dht_data[0], dht_data[1]);
         } else {
             uart_printf("Read failed      \n");

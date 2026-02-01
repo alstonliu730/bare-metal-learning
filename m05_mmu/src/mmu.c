@@ -52,7 +52,7 @@ void verify_page_table_alignment(void) {
     
     // Check alignment (last 12 bits should be 0)
     if ((uint64_t)&lvl1_table & 0xFFF) {
-        uart_printf("ERROR: lvl0_table not 4KB aligned!\n");
+        uart_printf("ERROR: lvl1_table not 4KB aligned!\n");
     } else {
         uart_printf("All tables properly aligned!\n");
     }

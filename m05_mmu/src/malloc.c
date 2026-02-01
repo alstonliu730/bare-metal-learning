@@ -5,7 +5,7 @@
 #include <uart.h>
 
 const MemPoolSize mem_sizes[NUM_FIXED_SIZE] = {
-    POOL_4KB, POOL_512, POOL_256, POOL_128, POOL_64, POOL_32, POOL_16
+    POOL_16, POOL_32, POOL_64, POOL_128, POOL_256, POOL_512, POOL_4KB
 };
 
 // metadata array
@@ -152,28 +152,22 @@ void allocator_init() {
  * @return the address of the heap-allocated memory 
  */
 void* malloc(size_t nBytes) {
-    size_t pool_size;
-    // Determine the pool size we will use
-    if (nBytes == 0) {
+    // Check size limit
+    if (nBytes == 0 || nBytes > POOL_4KB) {
         return NULL;
-    } else if (nBytes < POOL_16) {
-        pool_size = POOL_16;
-    } else if (nBytes > POOL_512) {
-        pool_size = POOL_4KB;
-    } else {
-        pool_size = 1 << (32 - __builtin_clz(nBytes - 1));
-    }
-    uart_printf("Determined pool size: %d\n", pool_size);
-    
-    // Loop through to find the memory pool
-    int pool_index = -1;
-    for (int i = 0; i < NUM_FIXED_SIZE; i++) {
-        if (memory_pool[i].block_size >= pool_size) {
-            pool_index = i;
-        }
-    }
-    uart_printf("Determined pool index: %d\n", pool_index);
+    } 
 
+    // Determine pool index with no loop
+    int pool_index;
+    if (nBytes <= POOL_16) {
+        pool_index = 0;
+    } else if (nBytes > POOL_512) {
+        pool_index = NUM_FIXED_SIZE - 1;
+    } else {
+        pool_index = (32 - __builtin_clz(nBytes - 1)) - 4;
+    }
+
+    // get memory pool address
     pool_t *pool = &memory_pool[pool_index];
 
     // check if the memory pool is full

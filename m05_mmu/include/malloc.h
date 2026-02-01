@@ -33,7 +33,7 @@ typedef struct {
 
 #define HEAP_START                  0x40000000
 #define HEAP_END                    0xA0000000
-#define HEAP_SIZE                   (HEAP_START - HEAP_END)
+#define HEAP_SIZE                   (HEAP_END - HEAP_START)
 
 #define MAX_BLOCKS_PER_POOL         4096
 #define MAX_PAGES                   512
