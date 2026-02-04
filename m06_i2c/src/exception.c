@@ -2,6 +2,7 @@
 #include <uart.h>
 #include <entry.h>
 #include <irq.h>
+#include <common.h>
 
 #define EXC_STR_ENTRY(code, string) [code] = {code, string}
 

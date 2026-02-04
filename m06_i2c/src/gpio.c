@@ -4,16 +4,6 @@
 
 #define LED_PIN   42
 
-// Write a value to a memory-mapped I/O register
-void mmio_write(uintptr_t reg, uint32_t value) {
-    *(volatile unsigned int *)reg = value;
-}
-
-// Read a value from a memory-mapped I/O register
-uint32_t mmio_read(uintptr_t reg) {
-    return *(volatile unsigned int *)reg;
-}
-
 /**
  * Set the function of a GPIO pin.
  */

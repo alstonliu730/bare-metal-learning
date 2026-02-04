@@ -25,10 +25,29 @@ uint32_t get_daif() {
     return daif;  // Bit 7 = IRQ mask
 }
 
+// Get Core Clock Speed
+uint32_t get_core_clk() {
+    // set mbox array
+    mbox[0] = 8 * sizeof(uint32_t);
+    mbox[1] = MBOX_REQUEST;
+
+    mbox[2] = MBOX_TAG_GETCLK;
+    mbox[3] = 8;
+    mbox[4] = MBOX_REQUEST;
+    mbox[5] = MBOX_CLK_CORE;
+    mbox[6] = 0;
+    mbox[7] = MBOX_TAG_LAST;
+
+    if (mbox_call(MBOX_CH_PROP) && mbox[1] == MBOX_SUCCESS) {
+        return mbox[6];
+    }
+    return 0;
+}
+
 // Get ARM Memory
 static void print_arm_memory() {
     // Setting mbox array
-    mbox[0] = 8 * 4; // Size in Bytes
+    mbox[0] = 8 * sizeof(uint32_t); // Size in Bytes
     mbox[1] = MBOX_REQUEST; // REQUEST TAG
 
     mbox[2] = MBOX_TAG_ARM_MEM; // Tag to get the arm memory address
@@ -48,7 +67,7 @@ static void print_arm_memory() {
 // Get VC Memory
 static void print_vc_memory() {
     // Setting mbox array
-    mbox[0] = 8 * 4; // Size in Bytes
+    mbox[0] = 8 * sizeof(uint32_t); // Size in Bytes
     mbox[1] = MBOX_REQUEST; // REQUEST TAG
 
     mbox[2] = MBOX_TAG_VC_MEM; // Tag to get the arm memory address

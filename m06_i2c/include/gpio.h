@@ -35,10 +35,6 @@
 #define GPIO_FUNCTION_ALT4      0b011
 #define GPIO_FUNCTION_ALT5      0b010
 
-// Read/Write functions
-void mmio_write(uintptr_t reg, uint32_t value);
-uint32_t mmio_read(uintptr_t reg);
-
 // ------------ GPIO ------------
 uint8_t gpio_call(unsigned int pin, unsigned int value,
                      unsigned int base, unsigned int field_size, unsigned int field_max);
