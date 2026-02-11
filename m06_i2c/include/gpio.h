@@ -35,6 +35,9 @@
 #define GPIO_FUNCTION_ALT4      0b011
 #define GPIO_FUNCTION_ALT5      0b010
 
+// Set GPIO SDA/SCL Pinout (BSC1)
+#define GPIO_SDA1       2         
+#define GPIO_SCL1       3
 // ------------ GPIO ------------
 uint8_t gpio_call(unsigned int pin, unsigned int value,
                      unsigned int base, unsigned int field_size, unsigned int field_max);

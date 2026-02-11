@@ -82,15 +82,15 @@ void exception_report(uint64_t type, uint64_t esr, uint64_t elr, uint64_t spsr)
     }
 
     // Exception Status Register Information
-    uint8_t ec = esr & EC_MASK;
+    uint8_t ec = (esr & EC_MASK) >> 26;
     exception_msg_t ec_info;
     if (check_ec(ec)) {
-        ec_info = exception_msgs[esr & EC_MASK];
+        ec_info = exception_msgs[ec];
     } else {
         ec_info = exception_msgs[0];
     }
-    uint64_t iss2_code = esr & ISS2_MASK;
-    uint64_t il_code = esr & IL_MASK;
+    uint64_t iss2_code = (esr & ISS2_MASK) >> 32;
+    uint64_t il_code = (esr & IL_MASK) >> 25;
     uint64_t iss_code = esr & ISS_MASK;
 
     uart_printf("=== %s ===\n", ec_info.msg);

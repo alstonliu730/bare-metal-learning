@@ -256,7 +256,7 @@ typedef uint64_t page_table_t[PT_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 #define HIGH_MEM_GB2        0x80000000ULL
 #define HIGH_MEM_GB2_MID    (HIGH_MEM_GB2 + 0x20000000ULL)
 #define HIGH_MEM_GB3        0xC0000000ULL
-#define PERIPHERAL_START    0xFC000000ULL
+#define PERIPHERAL_START    0xFA000000ULL
 
 // Initialization function
 void verify_page_table_alignment();

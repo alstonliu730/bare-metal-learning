@@ -135,7 +135,7 @@ static void setup_tcr() {
     tcr_value |= IRGN0_WBWA;
 
     // Set the Outer Cacheability
-    tcr_value |= ORGN0_WBWA;
+    tcr_value |= ORGN0_WT;
 
     // Set the Shareability
     tcr_value |= SH0_INNER_SHAREABLE;
@@ -252,20 +252,17 @@ static void setup_page_tables() {
 
     // ------ Level 2 GB 3: Normal Memory + Device Memory (Peripherals) ------
     uart_printf("   Level 2 GB 3 (Normal Memory)...\n");
-    uint64_t region_size = PERIPHERAL_START - HIGH_MEM_GB3;
-    pivot = region_size >> BLOCK_SHIFT; // dividing by 2^21 (2MB)
 
-    for(uint64_t i = 0; i < pivot; i++) {
+    for(uint64_t i = 0; i < PT_ENTRIES; i++) {
         uint64_t phys_addr = HIGH_MEM_GB3 + ((uint64_t)i << BLOCK_SHIFT);
-        lvl2_table_gb3[i] = make_block_descriptor(phys_addr, BLOCK_ATTR_NORMAL_MEMORY);
+
+        if (phys_addr >= PERIPHERAL_START) {
+            lvl2_table_gb3[i] = make_block_descriptor(phys_addr, BLOCK_ATTR_DEVICE_MEMORY);
+        } else {
+            lvl2_table_gb3[i] = make_block_descriptor(phys_addr, BLOCK_ATTR_NORMAL_MEMORY);
+        }
     }
 
-    uart_printf("   Level 2 GB 3 (Device Memory)...\n");
-    for(uint64_t i = pivot; i < PT_ENTRIES; i++) {
-        uint64_t phys_addr = PERIPHERAL_START + ((uint64_t)(i - pivot) << BLOCK_SHIFT);
-        lvl2_table_gb3[i] = make_block_descriptor(phys_addr, BLOCK_ATTR_DEVICE_MEMORY);
-    }
-    
     uart_printf("MMU Page Tables built successfully.\n");
     wait_ms(1000);
 }

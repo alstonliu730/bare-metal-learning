@@ -35,9 +35,16 @@ extern volatile unsigned int __attribute__((aligned(16))) mbox[36];
 #define MBOX_TAG_VC_MEM         0x00010006
 
 // Mailbox Tag IDs
-#define MBOX_TAG_SETPWR         0x00028001
+
+// Power Tags
+#define MBOX_TAG_GETPWR_ST      0x00020001
+#define MBOX_TAG_GET_TIMING     0x00020002
+#define MBOX_TAG_SETPWR_ST      0x00028001
+
+// Clock Tags
 #define MBOX_TAG_SETCLK         0x00038002
 #define MBOX_TAG_GETCLK         0x00030002
+#define MBOX_TAG_GETCLK_MEAS    0x00030047
 
 // Set framebuffer tags
 #define MBOX_TAG_PHYS_DIM       0x00048003

@@ -9,7 +9,9 @@
 #include <sched.h>
 #include <mmu.h>
 #include <malloc.h>
+#include <i2c.h>
 #include <dht-11.h>
+#include <mlx90640.h>
 
 // Returns the current Exception Level
 uint32_t get_el() {
@@ -23,25 +25,6 @@ uint32_t get_daif() {
     uint32_t daif;
     asm volatile("mrs %0, DAIF" : "=r"(daif));
     return daif;  // Bit 7 = IRQ mask
-}
-
-// Get Core Clock Speed
-uint32_t get_core_clk() {
-    // set mbox array
-    mbox[0] = 8 * sizeof(uint32_t);
-    mbox[1] = MBOX_REQUEST;
-
-    mbox[2] = MBOX_TAG_GETCLK;
-    mbox[3] = 8;
-    mbox[4] = MBOX_REQUEST;
-    mbox[5] = MBOX_CLK_CORE;
-    mbox[6] = 0;
-    mbox[7] = MBOX_TAG_LAST;
-
-    if (mbox_call(MBOX_CH_PROP) && mbox[1] == MBOX_SUCCESS) {
-        return mbox[6];
-    }
-    return 0;
 }
 
 // Get ARM Memory
@@ -80,6 +63,66 @@ static void print_vc_memory() {
         uart_printf("VC Base Address: %p\n", mbox[5]);
         uart_printf("VC Memory Size: %p\n", mbox[6]);
         uart_printf("VC End Address: %x\n", (mbox[5] + mbox[6]));
+    }
+}
+
+static void i2c1_setPowerState(uint32_t state) {
+    // Setting mbox array
+    mbox[0] = 8 * sizeof(uint32_t);
+    mbox[1] = MBOX_REQUEST;
+
+    mbox[2] = MBOX_TAG_SETPWR_ST;
+    mbox[3] = 8;
+    mbox[4] = MBOX_REQUEST;
+    mbox[5] = MBOX_PWR_I2C1;
+    mbox[6] = state;
+    mbox[7] = MBOX_TAG_LAST;
+
+    // Send message
+    if (mbox_call(MBOX_CH_PROP) && mbox[1] == MBOX_SUCCESS) {
+        uart_printf("I2C1 Tag Status:   %x\n", mbox[4]);
+        uart_printf("I2C1 Tag ID:       %x\n", mbox[5]);
+        uart_printf("I2C1 Power State:  %x\n", mbox[6]);
+    }
+}
+
+static void print_i2c1_timing() {
+    // Setting mbox array
+    mbox[0] = 8 * sizeof(uint32_t);
+    mbox[1] = MBOX_REQUEST;
+
+    mbox[2] = MBOX_TAG_GET_TIMING;
+    mbox[3] = 8;
+    mbox[4] = MBOX_REQUEST;
+    mbox[5] = MBOX_PWR_I2C1;
+    mbox[6] = 0;
+    mbox[7] = MBOX_TAG_LAST;
+
+    // Send message
+    if (mbox_call(MBOX_CH_PROP) && mbox[1] == MBOX_SUCCESS) {
+        uart_printf("I2C1 Tag Status:       %x\n", mbox[4]);
+        uart_printf("I2C1 Tag ID:           %x\n", mbox[5]);
+        uart_printf("I2C1 Wait Time (us):   %x\n", mbox[6]);
+    }
+}
+
+static void print_i2c1_powerState() {
+    // Setting mbox array
+    mbox[0] = 8 * sizeof(uint32_t);
+    mbox[1] = MBOX_REQUEST;
+
+    mbox[2] = MBOX_TAG_GETPWR_ST;
+    mbox[3] = 8;
+    mbox[4] = MBOX_REQUEST;
+    mbox[5] = MBOX_PWR_I2C1;
+    mbox[6] = 0;
+    mbox[7] = MBOX_TAG_LAST;
+
+    // Send message
+    if (mbox_call(MBOX_CH_PROP) && mbox[1] == MBOX_SUCCESS) {
+        uart_printf("I2C1 Tag Status:       %x\n", mbox[4]);
+        uart_printf("I2C1 Tag ID:           %x\n", mbox[5]);
+        uart_printf("I2C1 Power State:      %x\n", mbox[6]);
     }
 }
 
@@ -124,11 +167,56 @@ void main() {
     fb_init();
     led_off();
     
-    wait_ms(1000);
     
-    // Memory Allocator 
+    // Memory Allocator
+    led_on();
     allocator_init();
     print_pool_boundaries();
+    uart_printf("Allocator Initialized...\n");
+    led_off();
+
+    // MLX90640 Initialization
+    led_on();
+    mlx_i2cInit();
+    uart_printf("I2C1 Controller Initialized...\n");
+    wait_ms(500);
+    led_off();
+
+    // List out all the available devices on the bus
+    i2c_detect(I2C_REG(BSC1_ADDR), DEFAULT_BEGIN, DEFAULT_END);
+    wait_ms(1000);
+
+    // MLX90640 Test
+    uint16_t mlx_ctrlVal = mlx_getCtrlReg1();
+    uart_printf("MLX90640 Control Reg: %x\n", mlx_ctrlVal);
+
+    uint16_t mlx_statVal = mlx_getStatusReg();
+    uart_printf("MLX90640 Status Reg: %x\n", mlx_statVal);
+
+    uint16_t mlx_i2cAddr = mlx_getI2CAddr();
+    uart_printf("MLX90640 I2C Address: %x\n", mlx_i2cAddr);
+
+    // MLX90640 Test on reading 64 bytes from 0x4000
+    uint8_t* mlx_reg = (uint8_t *) malloc(sizeof(uint16_t));
+    uint16_t* img_data = (uint16_t *) malloc(sizeof(uint16_t) * 32);
+
+    mlx_reg[0] = 0x24;
+    mlx_reg[1] = 0x00;
+
+    i2c_writeReadRepeat(I2C_REG(BSC1_ADDR), 0x3B, mlx_reg, 2, img_data, 32 << 1);
+
+    // Print out the raw image data
+    uart_printf("Image Data: ");
+    for(int i = 0; i < 32; i++) {
+        if (i % 16 == 0) { uart_printf("\n  "); };
+        uart_printf("%x ",img_data[i]);
+    }
+    uart_printf("\n");
+
+
+    // Free the memory with mlx reg and image data
+    free(mlx_reg);
+    free(img_data);
 
     // DHT11 Temperature Readings
     int* dht_data = (int *) malloc(sizeof(int) * MAX_DHT_INPUT);

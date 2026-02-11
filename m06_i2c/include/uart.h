@@ -4,7 +4,7 @@
 #include <common.h>
 #include <stdarg.h>
 #include <stdint.h>
-#define HEX_STR(h) ((h < 10) ? '0' + h : 'A' + h - 10)
+#define HEX_STR(h) (((h) < 10) ? ((h) + '0') : ('A' + (h) - 10))
 
 #define INT_BUF_SIZE            10
 #define HEX_BUF_SIZE            18
