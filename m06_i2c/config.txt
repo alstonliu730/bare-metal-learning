@@ -3,7 +3,7 @@
 # Some settings may impact device functionality. See link above for details
 # Bare metal configuration
 kernel=kernel8.img
-kernel_address=0x80000
+kernel_address=0x8000
 disable_commandline_tags=1
 
 # set custom armstub location

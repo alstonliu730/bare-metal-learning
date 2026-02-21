@@ -10,7 +10,9 @@ CFILES = $(wildcard $(SRC_DIR)/*.c)
 SFILES = $(wildcard $(BOOT_SRC)/*.S)
 OFILES = $(CFILES:$(SRC_DIR)/%.c=$(BUILD_SRC)/%.o) $(SFILES:$(BOOT_SRC)/%.S=$(BUILD_SRC)/%.o)
 
-GCCFLAGS = $(INCLUDE_DIR) -Wall -Wextra -O1 -ffreestanding -nostdlib -nostartfiles -mstrict-align
+GCCFLAGS = $(INCLUDE_DIR) -Wall -Wextra -O2 -ffreestanding -nostdlib -nostartfiles -mstrict-align
+# Raspberry Pi 4B BCM2711 compiler flags
+GCCFLAGS += -mcpu=cortex-a72 -march=armv8-a+crc
 GCC = aarch64-none-elf-gcc$(TOOLCHAIN_SUFFIX)
 LINK = aarch64-none-elf-ld$(TOOLCHAIN_SUFFIX)
 OBJCOPY = aarch64-none-elf-objcopy$(TOOLCHAIN_SUFFIX)

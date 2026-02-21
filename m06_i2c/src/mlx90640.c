@@ -28,12 +28,8 @@ mlx_error mlx_i2cRead(uint8_t dev, uint16_t start, uint16_t nRead, uint16_t *dat
     i2c_status err;
 
     uint8_t reg[2] = { (uint8_t)(start >> 8), (uint8_t)(start & 0xFF) };
-    uint8_t readData[2];
     
-    err = i2c_writeReadRepeat(I2C_REG(BSC1_ADDR), dev, (void *)reg, MLX_REG_DLEN, (void *)readData, (nRead << 1));
-    
-    // Copy data into the data
-    memcpy(data, readData, (nRead << 1));
+    err = i2c_writeReadRepeat(I2C_REG(BSC1_ADDR), dev, (void *)reg, MLX_REG_DLEN, (void *)data, (nRead << 1));
 
     // Translate Error Code
     switch (err) {
@@ -127,4 +123,32 @@ uint16_t mlx_getI2CAddr() {
 
     // return the result
     return res;
+}
+
+/**
+ * Reads 832 words (16-bit) from the EEPROM Calibration Data
+ * 
+ * @param eeData The array to store the calibration data in
+ * 
+ * @return Returns a MLX Error Code
+ */
+mlx_error mlx_dumpParamEE(uint16_t* eeData) {
+    // Clear data from array
+    memset(eeData, 0, MLX_EEPROM_LEN * sizeof(uint16_t));
+
+    uint8_t reg[2] = { (uint8_t)(MLX_EEPROM_ADDR_START >> 8), (uint8_t)(MLX_EEPROM_ADDR_START & 0xFF) };
+
+    // Read data from the sensor (blocking)
+    i2c_status err = i2c_writeReadRepeat(I2C_REG(BSC1_ADDR), MLX_DEV_ADDR, reg, MLX_REG_DLEN, (void *) eeData, (MLX_EEPROM_LEN << 1));
+
+    switch (err) {
+        case I2C_SUCCESS:
+            return MLX_SUCCESS;
+        case I2C_ACK_ERR:
+            return MLX_NACK;
+        case I2C_DATA_LOSS:
+            return MLX_CORRUPT;
+        default:
+            return MLX_UNKNOWN_ERR;
+    }
 }

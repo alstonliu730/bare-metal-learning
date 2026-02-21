@@ -10,6 +10,7 @@
 #define HEX_BUF_SIZE            18
 #define DESIRED_BAUD            115200
 #define UART_MAX_QUEUE          (16 * 1024)
+#define DEFAULT_F_PRECISION     6
 
 // ------------------------- PL011 UART -------------------------
 #define UART0_BASE              0xFE201000

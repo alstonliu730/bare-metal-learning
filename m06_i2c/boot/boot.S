@@ -40,6 +40,17 @@ _start_el3:
     ldr     x0, =SCTLR_VALUE_MMU_DISABLED
     msr     SCTLR_EL1, x0
 
+    // Enable FP/SIMD
+    msr     CPTR_EL3, xzr       // Disable trapping FP instructions in EL3
+    msr     CPTR_EL2, xzr       //                                  in EL2
+    
+    mrs     x0, CPACR_EL1
+    ldr     x1, =CPACR_VALUE
+    orr     x0, x0, x1
+    msr     CPACR_EL1, x0
+
+    isb                         // ensure the change takes effect
+
     // Setup vector table base for EL1
     ldr     x0, =vector_table
     msr     VBAR_EL1, x0

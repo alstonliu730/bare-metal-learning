@@ -139,6 +139,7 @@ void main() {
     delay(1000);
     led_off();
 
+    delay(1000);
     // Timer Initialization
     timer1_init();
 
@@ -196,27 +197,18 @@ void main() {
     uint16_t mlx_i2cAddr = mlx_getI2CAddr();
     uart_printf("MLX90640 I2C Address: %x\n", mlx_i2cAddr);
 
-    // MLX90640 Test on reading 64 bytes from 0x4000
-    uint8_t* mlx_reg = (uint8_t *) malloc(sizeof(uint16_t));
-    uint16_t* img_data = (uint16_t *) malloc(sizeof(uint16_t) * 32);
-
-    mlx_reg[0] = 0x24;
-    mlx_reg[1] = 0x00;
-
-    i2c_writeReadRepeat(I2C_REG(BSC1_ADDR), 0x3B, mlx_reg, 2, img_data, 32 << 1);
-
-    // Print out the raw image data
-    uart_printf("Image Data: ");
-    for(int i = 0; i < 32; i++) {
-        if (i % 16 == 0) { uart_printf("\n  "); };
-        uart_printf("%x ",img_data[i]);
+    // Dumping EEPROM data from MLX90640 
+    uint16_t* eepromData = (uint16_t *) malloc(sizeof(uint16_t) * MLX_EEPROM_LEN); // allocate memroy 
+    mlx_error eepromStat = mlx_dumpParamEE(eepromData);
+    if (eepromStat != MLX_SUCCESS) {
+        uart_printf("\ndumpParamEE: Received error = %d\n", eepromStat);
     }
-    uart_printf("\n");
 
-
-    // Free the memory with mlx reg and image data
-    free(mlx_reg);
-    free(img_data);
+    // Print it out
+    for(int i = 0; i < MLX_EEPROM_LEN; i++) {
+        uart_printf("   %x: %x\n", i, eepromData[i]);
+    }
+    free(eepromData);
 
     // DHT11 Temperature Readings
     int* dht_data = (int *) malloc(sizeof(int) * MAX_DHT_INPUT);

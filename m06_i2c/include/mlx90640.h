@@ -16,7 +16,11 @@ typedef enum {
     MLX_UNKNOWN_ERR
 } mlx_error;
 
+// Register Length in Bytes
 #define MLX_REG_DLEN                2
+
+// EEPROM Dump Length in Bytes
+#define MLX_EEPROM_LEN              832
 
 // Default 0x33 but found 0x3B as the sensor
 #define MLX_DEV_ADDR                0x3B 
@@ -27,6 +31,9 @@ typedef enum {
 #define MLX_CTRL2                   0x800E
 #define MLX_I2C_CONFIG              0x800F
 #define MLX_I2C_ADDR                0x8010
+
+// MLX EEPROM Start address
+#define MLX_EEPROM_ADDR_START       0x2400
 
 /**
  * Initialize the I2C Bus associated for the MLX90640.
@@ -80,5 +87,17 @@ uint16_t mlx_getStatusReg();
  * @return I2C Address
  */
 uint16_t mlx_getI2CAddr();
+
+// ===================================================================
+
+/**
+ * Reads 832 words (16-bit) from the EEPROM Calibration Data
+ * 
+ * @param eeData The array to store the calibration data in
+ * 
+ * @return Returns a MLX Error Code
+ */
+mlx_error mlx_dumpParamEE(uint16_t* eeData);
+
 
 #endif /* __MLX_90640_H__ */

@@ -40,4 +40,11 @@
 #define SPSR_EL1h			            (5 << 0)
 #define SPSR_VALUE			            (SPSR_MASK_ALL | SPSR_EL1h)
 
+// ***************************************
+// CPACR_EL1, Architectural Feature Access Control Register (EL1)
+// ***************************************
+#define CPACR_FPEN_ENABLE_EL1           (0b01 << 20)
+#define CPACR_FPEN_ENABLE_ALL           (0b11 << 20)
+#define CPACR_VALUE                     (CPACR_FPEN_ENABLE_ALL)
+
 #endif /*SYSREG_H*/

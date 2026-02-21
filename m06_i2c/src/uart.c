@@ -228,12 +228,65 @@ void uart_printf(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
 
+
     // cycle through the format strings
     while (*fmt) {
+        // Precision variables
+        uint32_t digit_prec = 0;
+        uint32_t decimal_prec = 0;
+
+        // Check for formatting
         if (*fmt == '%') {
             fmt++; // get the character after the %
+            
+            // Parse precision BEFORE the switch
+            if (*fmt == '.') {
+                fmt++; // skip '.'
+                while (*fmt != '\0' && *fmt >= '0' && *fmt <= '9') {
+                    decimal_prec *= 10;
+                    decimal_prec += (*fmt - '0');
+                    fmt++;
+                }
+            }
 
             switch(*fmt) {
+                    case 'f':
+                        // Check if the precision is set
+                        if (decimal_prec == 0) {
+                            // set default precision
+                            decimal_prec = DEFAULT_F_PRECISION;
+                        }
+
+                        // get floating point value from the input
+                        double val = va_arg(args, double);
+
+                        // check if negative
+                        if (val < 0) { uart_writeByte('-'); val = -val; }
+                        
+                        // get integer value of float
+                        int ival = (int) val;
+                        uart_writeInt(ival);
+
+                        uart_writeByte('.');
+                        
+                        // get only the decimal values
+                        val -= ival;
+                        
+                        // move decimal places up by precision
+                        for(uint32_t i = 0; i < decimal_prec; i++) {
+                            // move the decimal point to the right
+                            val *= 10;
+                            
+                            // set the integer value
+                            ival = (int) val;
+
+                            // print the integer value
+                            uart_writeByte(((uint32_t) ival) + '0');
+                        }
+
+                        // reset the precision
+                        decimal_prec = 0;
+                        break;
                 case 'd': // Signed decimal
                 case 'i': {
                     int val = va_arg(args, int); // get next item
@@ -364,6 +417,7 @@ void uart_init() {
 /**
  * When the IRQ line is asserted for the UART this handles it for all UART.
  */
+__attribute__((target("general-regs-only")))
 void uart_handler() {
     // Check which IRQ was set (reading bits 16 - 20)
     uint32_t uart_id = (mmio_read(PACTL_CS) >> 16) & 0x1F;
