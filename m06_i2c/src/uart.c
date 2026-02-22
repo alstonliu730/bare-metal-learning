@@ -259,27 +259,30 @@ void uart_printf(const char *fmt, ...) {
 
                         // get floating point value from the input
                         double val = va_arg(args, double);
-
+                        float fVal = (float) val;
                         // check if negative
-                        if (val < 0) { uart_writeByte('-'); val = -val; }
+                        if (fVal < 0) { uart_writeByte('-'); fVal = -fVal; }
                         
                         // get integer value of float
-                        int ival = (int) val;
+                        int ival = (int) fVal;
                         uart_writeInt(ival);
 
                         uart_writeByte('.');
                         
                         // get only the decimal values
-                        val -= ival;
+                        float frac_part = fVal - ival;
                         
                         // move decimal places up by precision
                         for(uint32_t i = 0; i < decimal_prec; i++) {
                             // move the decimal point to the right
-                            val *= 10;
+                            frac_part *= 10;
                             
                             // set the integer value
-                            ival = (int) val;
-
+                            ival = (int) frac_part;
+                            
+                            // clear the integer value from float
+                            frac_part -= ival;
+                            
                             // print the integer value
                             uart_writeByte(((uint32_t) ival) + '0');
                         }
