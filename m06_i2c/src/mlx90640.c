@@ -152,3 +152,57 @@ mlx_error mlx_dumpParamEE(uint16_t* eeData) {
             return MLX_UNKNOWN_ERR;
     }
 }
+
+/**
+ * Calculate VDD value from EEPROM Data and set it to the parameters
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+void ExtractVDDParam(uint16_t* eeData, mlx_param* calibration_data) {
+    // Calculate kVdd value & set it to the calibration data
+    int16_t kVdd = (eeData[MLX_EE_IDX(0x33)] & 0xFF00) >> 8;
+
+    if (kVdd > 127) { kVdd -= 256; }
+
+    kVdd <<= 5; // shift kVdd by 5 bits
+    calibration_data->kVdd = kVdd;
+
+    // Calculate vdd25 & set it to the calibration data
+    int16_t vdd25 = (eeData[MLX_EE_IDX(0x33)] & 0x00FF);
+    vdd25 = ((vdd25 - 256) >> 5) - (1 << 13);
+
+    calibration_data->vdd25 = vdd25;
+}
+
+/**
+ * Calculate PTAT value from EEPROM Data and set it to the parameters
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+void ExtractPTATParam(uint16_t* eeData, mlx_param* calibration_data) {
+    // Calculate KvPTAT
+    float KvPTAT = (float) ((eeData[MLX_EE_IDX(0x32)] & 0xFC00) >> 10);
+    if (KvPTAT > 31.00) { KvPTAT -= 64.00; }
+
+    KvPTAT /= LSHIFT(1, 12);
+    calibration_data->KvPTAT = KvPTAT;
+
+    // Calculate KtPTAT
+    float KtPTAT = (eeData[MLX_EE_IDX(0x32)] & 0x03FF);
+    if (KtPTAT > 511) { KtPTAT -= 1024; } 
+
+    KtPTAT /= LSHIFT(1, 3);
+    calibration_data->KtPTAT;
+    
+    // Calculate vPTAT25
+    int16_t vPTAT25 = eeData[MLX_EE_IDX(0x31)];
+    calibration_data->vPTAT25 = vPTAT25;
+
+    // Calculate alpha PTAT
+    float alphaPTAT = ((eeData[MLX_EE_IDX(0x10)] & 0xF000) >> 12) / 4 + 8;
+    calibration_data->alphaPTAT = alphaPTAT;
+}
+
+

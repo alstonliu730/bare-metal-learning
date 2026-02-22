@@ -9,6 +9,7 @@
 // uses the two's complement to store its value.
 //*********************************
 
+// MLX90640 Status Error Codes
 typedef enum {
     MLX_SUCCESS = 0,
     MLX_NACK,
@@ -16,12 +17,45 @@ typedef enum {
     MLX_UNKNOWN_ERR
 } mlx_error;
 
+// MLX90640 Calibration Params
+typedef struct {
+    int16_t kVdd;
+    int16_t vdd25;
+    float KvPTAT;
+    float KtPTAT;
+    uint16_t vPTAT25;
+    float alphaPTAT;
+    int16_t gainEE;
+    float tgc;
+    float cpKv;
+    float cpKta;
+    uint8_t resolutionEE;
+    uint8_t calibrationModeEE;
+    float KsTa;
+    float ksTo[5];
+    int16_t ct[5];
+    uint16_t alpha[768];    
+    uint8_t alphaScale;
+    int16_t offset[768];    
+    int8_t kta[768];
+    uint8_t ktaScale;    
+    int8_t kv[768];
+    uint8_t kvScale;
+    float cpAlpha[2];
+    int16_t cpOffset[2];
+    float ilChessC[3]; 
+    uint16_t brokenPixels[5];
+    uint16_t outlierPixels[5];  
+} mlx_param;
+
 // Register Length in Bytes
 #define MLX_REG_DLEN                2
 
 // EEPROM Dump Length in Bytes
 #define MLX_EEPROM_LEN              832
 
+// EEPROM index
+#define MLX_EE_IDX(n)               (n) - 1
 // Default 0x33 but found 0x3B as the sensor
 #define MLX_DEV_ADDR                0x3B 
 
@@ -99,5 +133,19 @@ uint16_t mlx_getI2CAddr();
  */
 mlx_error mlx_dumpParamEE(uint16_t* eeData);
 
+/**
+ * Calculate VDD value from EEPROM Data and set it to the parameters
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+void ExtractVDDParam(uint16_t* eeData, mlx_param* calibration_data);
 
+/**
+ * Calculate PTAT value from EEPROM Data and set it to the parameters
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+void ExtractPTATParam(uint16_t* eeData, mlx_param* calibration_data);
 #endif /* __MLX_90640_H__ */

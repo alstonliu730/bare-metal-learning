@@ -204,10 +204,14 @@ void main() {
         uart_printf("\ndumpParamEE: Received error = %d\n", eepromStat);
     }
 
-    // Print it out
-    for(int i = 0; i < MLX_EEPROM_LEN; i++) {
-        uart_printf("   %x: %x\n", i, eepromData[i]);
-    }
+    uart_printf("EE[%d] = %x\n", MLX_EE_IDX(32), eepromData[MLX_EE_IDX(32)]);
+    float KvPTAT = (float) ((eepromData[MLX_EE_IDX(32)] & 0xFC00) >> 10);
+    if (KvPTAT > 31.00) { KvPTAT -= 64.00; }
+
+    KvPTAT /= LSHIFT(1, 12);
+
+    uart_printf("KvPTAT: %.10f\n", KvPTAT);
+
     free(eepromData);
 
     // DHT11 Temperature Readings
