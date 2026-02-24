@@ -198,11 +198,57 @@ void ExtractPTATParam(uint16_t* eeData, mlx_param* calibration_data) {
     
     // Calculate vPTAT25
     int16_t vPTAT25 = eeData[MLX_EE_IDX(0x31)];
+
     calibration_data->vPTAT25 = vPTAT25;
 
     // Calculate alpha PTAT
-    float alphaPTAT = ((eeData[MLX_EE_IDX(0x10)] & 0xF000) >> 12) / 4 + 8;
+    float alphaPTAT = (float)((eeData[MLX_EE_IDX(0x10)] & 0xF000) >> 14) + 8.0f;
     calibration_data->alphaPTAT = alphaPTAT;
 }
+
+/**
+ * Calculate Gain value from EEPROM Data and set it to the parameters
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+void ExtractGainParam(uint16_t* eeData, mlx_param* calibration_data) {
+    int16_t gainEE = eeData[MLX_EE_IDX(0x30)];
+    
+    if (gainEE > 32767) {
+        gainEE -= 65536;
+    }
+
+    calibration_data->gainEE = gainEE;
+}
+
+/**
+ * Calculate KsTa value from EEPROM Data and set it to the parameters
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+void ExtractKsTaParam(uint16_t* eeData, mlx_param* calibration_data) {
+    int16_t KsTaEE = (eeData[MLX_EE_IDX(0x3C)] & 0xFF00) >> 8;
+    if (KsTaEE > 127) {
+        KsTaEE -= 256;
+    }
+
+    calibration_data->KsTa = (float) KsTaEE / (LSHIFT(1, 13));
+}
+
+
+/**
+ * Calculate Resolution Calibration value from EEPROM Data and set it to the parameters
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+void ExtractResolutionParam(uint16_t* eeData, mlx_param* calibration_data) {
+    uint8_t resEE = (eeData[MLX_EE_IDX(0x38)] & 0x3000) >> 12;
+
+    calibration_data->resolutionEE = resEE;
+}
+
 
 

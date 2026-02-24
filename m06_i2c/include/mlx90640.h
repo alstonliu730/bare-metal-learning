@@ -133,6 +133,8 @@ uint16_t mlx_getI2CAddr();
  */
 mlx_error mlx_dumpParamEE(uint16_t* eeData);
 
+
+
 /**
  * Calculate VDD value from EEPROM Data and set it to the parameters
  * 
@@ -148,4 +150,29 @@ void ExtractVDDParam(uint16_t* eeData, mlx_param* calibration_data);
  * @param calibration_data      address to the parameter struct
  */
 void ExtractPTATParam(uint16_t* eeData, mlx_param* calibration_data);
+
+
+/**
+ * Calculate Gain value from EEPROM Data and set it to the parameters
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+void ExtractGainParam(uint16_t* eeData, mlx_param* calibration_data);
+
+/**
+ * Calculate KsTa value from EEPROM Data and set it to the parameters
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+void ExtractKsTaParam(uint16_t* eeData, mlx_param* calibration_data);
+
+/**
+ * Calculate Resolution Calibration value from EEPROM Data and set it to the parameters
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+void ExtractResolutionParam(uint16_t* eeData, mlx_param* calibration_data);
 #endif /* __MLX_90640_H__ */
