@@ -5,6 +5,13 @@
 #include <common.h>
 #include <timer.h>
 
+// Extraction Declarations
+static void ExtractVDDParam(uint16_t* eeData, mlx_param* calibration_data);
+static void ExtractPTATParam(uint16_t* eeData, mlx_param* calibration_data);
+static void ExtractGainParam(uint16_t* eeData, mlx_param* calibration_data);
+static void ExtractKsTaParam(uint16_t* eeData, mlx_param* calibration_data);
+static void ExtractResolutionParam(uint16_t* eeData, mlx_param* calibration_data);
+
 /**
  * Initialize the I2C Bus associated for the MLX90640.
  */
@@ -136,21 +143,7 @@ mlx_error mlx_dumpParamEE(uint16_t* eeData) {
     // Clear data from array
     memset(eeData, 0, MLX_EEPROM_LEN * sizeof(uint16_t));
 
-    uint8_t reg[2] = { (uint8_t)(MLX_EEPROM_ADDR_START >> 8), (uint8_t)(MLX_EEPROM_ADDR_START & 0xFF) };
-
-    // Read data from the sensor (blocking)
-    i2c_status err = i2c_writeReadRepeat(I2C_REG(BSC1_ADDR), MLX_DEV_ADDR, reg, MLX_REG_DLEN, (void *) eeData, (MLX_EEPROM_LEN << 1));
-
-    switch (err) {
-        case I2C_SUCCESS:
-            return MLX_SUCCESS;
-        case I2C_ACK_ERR:
-            return MLX_NACK;
-        case I2C_DATA_LOSS:
-            return MLX_CORRUPT;
-        default:
-            return MLX_UNKNOWN_ERR;
-    }
+    return mlx_i2cRead(MLX_DEV_ADDR, 0x2400, MLX_EEPROM_LEN, eeData);
 }
 
 /**
@@ -159,7 +152,7 @@ mlx_error mlx_dumpParamEE(uint16_t* eeData) {
  * @param eeData                EEPROM data from the sensor
  * @param calibration_data      address to the parameter struct
  */
-void ExtractVDDParam(uint16_t* eeData, mlx_param* calibration_data) {
+static void ExtractVDDParam(uint16_t* eeData, mlx_param* calibration_data) {
     // Calculate kVdd value & set it to the calibration data
     int16_t kVdd = (eeData[MLX_EE_IDX(0x33)] & 0xFF00) >> 8;
 
@@ -181,7 +174,7 @@ void ExtractVDDParam(uint16_t* eeData, mlx_param* calibration_data) {
  * @param eeData                EEPROM data from the sensor
  * @param calibration_data      address to the parameter struct
  */
-void ExtractPTATParam(uint16_t* eeData, mlx_param* calibration_data) {
+static void ExtractPTATParam(uint16_t* eeData, mlx_param* calibration_data) {
     // Calculate KvPTAT
     float KvPTAT = (float) ((eeData[MLX_EE_IDX(0x32)] & 0xFC00) >> 10);
     if (KvPTAT > 31.00) { KvPTAT -= 64.00; }
@@ -212,7 +205,7 @@ void ExtractPTATParam(uint16_t* eeData, mlx_param* calibration_data) {
  * @param eeData                EEPROM data from the sensor
  * @param calibration_data      address to the parameter struct
  */
-void ExtractGainParam(uint16_t* eeData, mlx_param* calibration_data) {
+static void ExtractGainParam(uint16_t* eeData, mlx_param* calibration_data) {
     int16_t gainEE = eeData[MLX_EE_IDX(0x30)];
     
     if (gainEE > 32767) {
@@ -228,7 +221,7 @@ void ExtractGainParam(uint16_t* eeData, mlx_param* calibration_data) {
  * @param eeData                EEPROM data from the sensor
  * @param calibration_data      address to the parameter struct
  */
-void ExtractKsTaParam(uint16_t* eeData, mlx_param* calibration_data) {
+static void ExtractKsTaParam(uint16_t* eeData, mlx_param* calibration_data) {
     int16_t KsTaEE = (eeData[MLX_EE_IDX(0x3C)] & 0xFF00) >> 8;
     if (KsTaEE > 127) {
         KsTaEE -= 256;
@@ -237,18 +230,67 @@ void ExtractKsTaParam(uint16_t* eeData, mlx_param* calibration_data) {
     calibration_data->KsTa = (float) KsTaEE / (LSHIFT(1, 13));
 }
 
-
 /**
  * Calculate Resolution Calibration value from EEPROM Data and set it to the parameters
  * 
  * @param eeData                EEPROM data from the sensor
  * @param calibration_data      address to the parameter struct
  */
-void ExtractResolutionParam(uint16_t* eeData, mlx_param* calibration_data) {
+static void ExtractResolutionParam(uint16_t* eeData, mlx_param* calibration_data) {
     uint8_t resEE = (eeData[MLX_EE_IDX(0x38)] & 0x3000) >> 12;
 
     calibration_data->resolutionEE = resEE;
 }
+
+/**
+ * Calculate KsTo & Corner Temperature value from EEPROM Data and set it to the parameters.
+ * - KsTo Range 1-4 = Sensitivity changes with object temp. across 4 ranges (CT1-CT4)
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+static void ExtractKsToParam(uint16_t* eeData, mlx_param* calibration_data) {
+    int32_t KsToScale;
+    int8_t step;
+
+    step = ((eeData[MLX_EE_IDX(0x3F)] & 0x3000) >> 12) * 10;
+
+    // Calculate the Corner Temperatures
+    calibration_data->ct[0] = -40; // hard-coded in Celcius
+    calibration_data->ct[1] = 0;
+    calibration_data->ct[2] = ((eeData[MLX_EE_IDX(0x3F)] & 0x00F0) >> 4) * step;
+    calibration_data->ct[3] = ((eeData[MLX_EE_IDX(0x3F)] & 0x0F00) >> 8) * step + calibration_data->ct[2];
+    calibration_data->ct[4] = 400; // hard-coded
+
+    // Calculate the KsTo Scale
+    KsToScale = (eeData[MLX_EE_IDX(0x3F)] & 0x000F) + 8;
+    KsToScale = LSHIFT(1, KsToScale);
+
+    // Calculate KsTo1
+    calibration_data->KsTo[0] = (eeData[MLX_EE_IDX(0x3D)] & 0x00FF);
+    if (calibration_data->KsTo[0] > 127) { calibration_data->KsTo[0] -= 256; }
+    calibration_data->KsTo[0] /= KsToScale;
+
+    // Calculate KsTo2
+    calibration_data->KsTo[1] = (eeData[MLX_EE_IDX(0x3D)] & 0xFF00) >> 8;
+    if (calibration_data->KsTo[1] > 127) { calibration_data->KsTo[1] -= 256; }
+    calibration_data->KsTo[1] /= KsToScale;
+    
+    // Calculate KsTo3
+    calibration_data->KsTo[2] = (eeData[MLX_EE_IDX(0x3E)] & 0x00FF);
+    if (calibration_data->KsTo[2] > 127) { calibration_data->KsTo[2] -= 256; }
+    calibration_data->KsTo[2] /= KsToScale;
+
+    // Calculate KsTo4
+    calibration_data->KsTo[3] = (eeData[MLX_EE_IDX(0x3E)] & 0xFF00) >> 8;
+    if (calibration_data->KsTo[3] > 127) { calibration_data->KsTo[3] -= 256; }
+    calibration_data->KsTo[3] /= KsToScale;
+}
+
+
+
+
+
 
 
 

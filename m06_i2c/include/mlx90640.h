@@ -18,7 +18,7 @@ typedef enum {
 } mlx_error;
 
 // MLX90640 Calibration Params
-typedef struct {
+typedef struct mlx90640{
     int16_t kVdd;
     int16_t vdd25;
     float KvPTAT;
@@ -32,7 +32,7 @@ typedef struct {
     uint8_t resolutionEE;
     uint8_t calibrationModeEE;
     float KsTa;
-    float ksTo[5];
+    float KsTo[5];
     int16_t ct[5];
     uint16_t alpha[768];    
     uint8_t alphaScale;
@@ -51,7 +51,7 @@ typedef struct {
 // Register Length in Bytes
 #define MLX_REG_DLEN                2
 
-// EEPROM Dump Length in Bytes
+// EEPROM Dump Length in Words
 #define MLX_EEPROM_LEN              832
 
 // EEPROM index
@@ -135,44 +135,4 @@ mlx_error mlx_dumpParamEE(uint16_t* eeData);
 
 
 
-/**
- * Calculate VDD value from EEPROM Data and set it to the parameters
- * 
- * @param eeData                EEPROM data from the sensor
- * @param calibration_data      address to the parameter struct
- */
-void ExtractVDDParam(uint16_t* eeData, mlx_param* calibration_data);
-
-/**
- * Calculate PTAT value from EEPROM Data and set it to the parameters
- * 
- * @param eeData                EEPROM data from the sensor
- * @param calibration_data      address to the parameter struct
- */
-void ExtractPTATParam(uint16_t* eeData, mlx_param* calibration_data);
-
-
-/**
- * Calculate Gain value from EEPROM Data and set it to the parameters
- * 
- * @param eeData                EEPROM data from the sensor
- * @param calibration_data      address to the parameter struct
- */
-void ExtractGainParam(uint16_t* eeData, mlx_param* calibration_data);
-
-/**
- * Calculate KsTa value from EEPROM Data and set it to the parameters
- * 
- * @param eeData                EEPROM data from the sensor
- * @param calibration_data      address to the parameter struct
- */
-void ExtractKsTaParam(uint16_t* eeData, mlx_param* calibration_data);
-
-/**
- * Calculate Resolution Calibration value from EEPROM Data and set it to the parameters
- * 
- * @param eeData                EEPROM data from the sensor
- * @param calibration_data      address to the parameter struct
- */
-void ExtractResolutionParam(uint16_t* eeData, mlx_param* calibration_data);
 #endif /* __MLX_90640_H__ */
