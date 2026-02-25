@@ -54,8 +54,9 @@ typedef struct mlx90640{
 // EEPROM Dump Length in Words
 #define MLX_EEPROM_LEN              832
 
-// EEPROM index
-#define MLX_EE_IDX(n)               (n) - 1
+// Alpha Scale
+#define SCALEALPHA 0.000001f
+
 // Default 0x33 but found 0x3B as the sensor
 #define MLX_DEV_ADDR                0x3B 
 

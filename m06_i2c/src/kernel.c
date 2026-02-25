@@ -204,8 +204,8 @@ void main() {
         uart_printf("\ndumpParamEE: Received error = %d\n", eepromStat);
     }
 
-    uart_printf("EE[%d] = %x\n", MLX_EE_IDX(0x32), eepromData[MLX_EE_IDX(0x32)]);
-    float KvPTAT = (float) ((eepromData[MLX_EE_IDX(0x32)] & 0xFC00) >> 10);
+    uart_printf("EE[%d] = %x\n", 0x32, eepromData[0x32]);
+    float KvPTAT = (float) ((eepromData[0x32] & 0xFC00) >> 10);
     if (KvPTAT > 31.00) { KvPTAT -= 64.00; }
 
     KvPTAT /= LSHIFT(1, 12);

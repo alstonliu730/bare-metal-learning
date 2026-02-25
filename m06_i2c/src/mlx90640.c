@@ -10,7 +10,10 @@ static void ExtractVDDParam(uint16_t* eeData, mlx_param* calibration_data);
 static void ExtractPTATParam(uint16_t* eeData, mlx_param* calibration_data);
 static void ExtractGainParam(uint16_t* eeData, mlx_param* calibration_data);
 static void ExtractKsTaParam(uint16_t* eeData, mlx_param* calibration_data);
+static void ExtractKsToParam(uint16_t* eeData, mlx_param* calibration_data);
+static void ExtractTGCParam(uint16_t *eeData, mlx_param* calibration_data);
 static void ExtractResolutionParam(uint16_t* eeData, mlx_param* calibration_data);
+static void ExtractAlphaParam(uint16_t* eeData, mlx_param* calibration_data);
 
 /**
  * Initialize the I2C Bus associated for the MLX90640.
@@ -154,7 +157,7 @@ mlx_error mlx_dumpParamEE(uint16_t* eeData) {
  */
 static void ExtractVDDParam(uint16_t* eeData, mlx_param* calibration_data) {
     // Calculate kVdd value & set it to the calibration data
-    int16_t kVdd = (eeData[MLX_EE_IDX(0x33)] & 0xFF00) >> 8;
+    int16_t kVdd = (eeData[0x33] & 0xFF00) >> 8;
 
     if (kVdd > 127) { kVdd -= 256; }
 
@@ -162,7 +165,7 @@ static void ExtractVDDParam(uint16_t* eeData, mlx_param* calibration_data) {
     calibration_data->kVdd = kVdd;
 
     // Calculate vdd25 & set it to the calibration data
-    int16_t vdd25 = (eeData[MLX_EE_IDX(0x33)] & 0x00FF);
+    int16_t vdd25 = (eeData[0x33] & 0x00FF);
     vdd25 = ((vdd25 - 256) >> 5) - (1 << 13);
 
     calibration_data->vdd25 = vdd25;
@@ -176,26 +179,26 @@ static void ExtractVDDParam(uint16_t* eeData, mlx_param* calibration_data) {
  */
 static void ExtractPTATParam(uint16_t* eeData, mlx_param* calibration_data) {
     // Calculate KvPTAT
-    float KvPTAT = (float) ((eeData[MLX_EE_IDX(0x32)] & 0xFC00) >> 10);
+    float KvPTAT = (float) ((eeData[0x32] & 0xFC00) >> 10);
     if (KvPTAT > 31.00) { KvPTAT -= 64.00; }
 
     KvPTAT /= LSHIFT(1, 12);
     calibration_data->KvPTAT = KvPTAT;
 
     // Calculate KtPTAT
-    float KtPTAT = (eeData[MLX_EE_IDX(0x32)] & 0x03FF);
+    float KtPTAT = (eeData[0x32] & 0x03FF);
     if (KtPTAT > 511) { KtPTAT -= 1024; } 
 
     KtPTAT /= LSHIFT(1, 3);
     calibration_data->KtPTAT;
     
     // Calculate vPTAT25
-    int16_t vPTAT25 = eeData[MLX_EE_IDX(0x31)];
+    int16_t vPTAT25 = eeData[0x31];
 
     calibration_data->vPTAT25 = vPTAT25;
 
     // Calculate alpha PTAT
-    float alphaPTAT = (float)((eeData[MLX_EE_IDX(0x10)] & 0xF000) >> 14) + 8.0f;
+    float alphaPTAT = (float)((eeData[0x10] & 0xF000) >> 14) + 8.0f;
     calibration_data->alphaPTAT = alphaPTAT;
 }
 
@@ -206,7 +209,7 @@ static void ExtractPTATParam(uint16_t* eeData, mlx_param* calibration_data) {
  * @param calibration_data      address to the parameter struct
  */
 static void ExtractGainParam(uint16_t* eeData, mlx_param* calibration_data) {
-    int16_t gainEE = eeData[MLX_EE_IDX(0x30)];
+    int16_t gainEE = eeData[0x30];
     
     if (gainEE > 32767) {
         gainEE -= 65536;
@@ -222,7 +225,7 @@ static void ExtractGainParam(uint16_t* eeData, mlx_param* calibration_data) {
  * @param calibration_data      address to the parameter struct
  */
 static void ExtractKsTaParam(uint16_t* eeData, mlx_param* calibration_data) {
-    int16_t KsTaEE = (eeData[MLX_EE_IDX(0x3C)] & 0xFF00) >> 8;
+    int16_t KsTaEE = (eeData[0x3C] & 0xFF00) >> 8;
     if (KsTaEE > 127) {
         KsTaEE -= 256;
     }
@@ -231,13 +234,29 @@ static void ExtractKsTaParam(uint16_t* eeData, mlx_param* calibration_data) {
 }
 
 /**
+ * Calculate TGC value from EEPROM Data and set it to the parameters
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+void ExtractTGCParameters(uint16_t *eeData, mlx_param* calibration_data) {
+    float tgc = eeData[60] & 0x00FF;
+    if(tgc > 127) { tgc = tgc - 256; }
+
+    tgc /= 32.0f;
+    
+    calibration_data->tgc = tgc;
+}
+
+
+/**
  * Calculate Resolution Calibration value from EEPROM Data and set it to the parameters
  * 
  * @param eeData                EEPROM data from the sensor
  * @param calibration_data      address to the parameter struct
  */
 static void ExtractResolutionParam(uint16_t* eeData, mlx_param* calibration_data) {
-    uint8_t resEE = (eeData[MLX_EE_IDX(0x38)] & 0x3000) >> 12;
+    uint8_t resEE = (eeData[0x38] & 0x3000) >> 12;
 
     calibration_data->resolutionEE = resEE;
 }
@@ -253,42 +272,133 @@ static void ExtractKsToParam(uint16_t* eeData, mlx_param* calibration_data) {
     int32_t KsToScale;
     int8_t step;
 
-    step = ((eeData[MLX_EE_IDX(0x3F)] & 0x3000) >> 12) * 10;
+    step = ((eeData[0x3F] & 0x3000) >> 12) * 10;
 
     // Calculate the Corner Temperatures
     calibration_data->ct[0] = -40; // hard-coded in Celcius
     calibration_data->ct[1] = 0;
-    calibration_data->ct[2] = ((eeData[MLX_EE_IDX(0x3F)] & 0x00F0) >> 4) * step;
-    calibration_data->ct[3] = ((eeData[MLX_EE_IDX(0x3F)] & 0x0F00) >> 8) * step + calibration_data->ct[2];
+    calibration_data->ct[2] = ((eeData[0x3F] & 0x00F0) >> 4) * step;
+    calibration_data->ct[3] = ((eeData[0x3F] & 0x0F00) >> 8) * step + calibration_data->ct[2];
     calibration_data->ct[4] = 400; // hard-coded
 
     // Calculate the KsTo Scale
-    KsToScale = (eeData[MLX_EE_IDX(0x3F)] & 0x000F) + 8;
+    KsToScale = (eeData[0x3F] & 0x000F) + 8;
     KsToScale = LSHIFT(1, KsToScale);
 
     // Calculate KsTo1
-    calibration_data->KsTo[0] = (eeData[MLX_EE_IDX(0x3D)] & 0x00FF);
+    calibration_data->KsTo[0] = (eeData[0x3D] & 0x00FF);
     if (calibration_data->KsTo[0] > 127) { calibration_data->KsTo[0] -= 256; }
     calibration_data->KsTo[0] /= KsToScale;
 
     // Calculate KsTo2
-    calibration_data->KsTo[1] = (eeData[MLX_EE_IDX(0x3D)] & 0xFF00) >> 8;
+    calibration_data->KsTo[1] = (eeData[0x3D] & 0xFF00) >> 8;
     if (calibration_data->KsTo[1] > 127) { calibration_data->KsTo[1] -= 256; }
     calibration_data->KsTo[1] /= KsToScale;
     
     // Calculate KsTo3
-    calibration_data->KsTo[2] = (eeData[MLX_EE_IDX(0x3E)] & 0x00FF);
+    calibration_data->KsTo[2] = (eeData[0x3E] & 0x00FF);
     if (calibration_data->KsTo[2] > 127) { calibration_data->KsTo[2] -= 256; }
     calibration_data->KsTo[2] /= KsToScale;
 
     // Calculate KsTo4
-    calibration_data->KsTo[3] = (eeData[MLX_EE_IDX(0x3E)] & 0xFF00) >> 8;
+    calibration_data->KsTo[3] = (eeData[0x3E] & 0xFF00) >> 8;
     if (calibration_data->KsTo[3] > 127) { calibration_data->KsTo[3] -= 256; }
     calibration_data->KsTo[3] /= KsToScale;
+
+    // Hardcode the KsTo5
+    calibration_data->KsTo[4] = -0.0002;
 }
 
+/**
+ * Calculate Alpha Coefficient value from EEPROM Data and set it to the parameters.
+ * Check 11.1.4, 11.1.11, 11.1.12 in the MLX90640 Datasheet
+ * 
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+static void ExtractAlphaParam(uint16_t* eeData, mlx_param* calibration_data) {
+    int accRow[24];
+    int accCol[32];
+    int p = 0;
+    float alphaTemp[768]; // store coefficient temporary
 
+    // Set Alpha Scale and Reference values
+    int alphaRef = eeData[0x21];
+    uint8_t alphaScale = ((eeData[0x20] & 0xF000) >> 12) + 30;
+    uint8_t accRowScale = (eeData[0x20] & 0x0F00) >> 8;
+    uint8_t accColScale = (eeData[0x20] & 0x00F0) >> 4;
+    uint8_t accRemScale = eeData[0x20] & 0x000F;
 
+    // Set the ACC Row values
+    for (int i = 0; i < 6; i++) {
+        p = i * 4; // set the pointer to the associated row
+        accRow[p + 0] = (eeData[0x22 + i] & 0x000F);
+        if (accRow[p + 0] > 7) { accRow[p + 0] -= 16; }
+
+        accRow[p + 1] = (eeData[0x22 + i] & 0x00F0) >> 4;
+        if (accRow[p + 1] > 7) { accRow[p + 1] -= 16; }
+
+        accRow[p + 2] = (eeData[0x22 + i] & 0x0F00) >> 8;
+        if (accRow[p + 2] > 7) { accRow[p + 2] -= 16; }
+
+        accRow[p + 3] = (eeData[0x22 + i] & 0xF000) >> 12;
+        if (accRow[p + 3] > 7) { accRow[p + 3] -= 16; }
+    }
+    
+    // Set the ACC Col values
+    for (int i = 0; i < 8; i++) {
+        p = i * 4; // set the pointer to the associated column
+        accCol[p + 0] = (eeData[0x28 + i] & 0x000F);
+        if (accCol[p + 0] > 7) { accCol[p + 0] -= 16; }
+
+        accCol[p + 1] = (eeData[0x28 + i] & 0x00F0) >> 4;
+        if (accCol[p + 1] > 7) { accCol[p + 1] -= 16; }
+
+        accCol[p + 2] = (eeData[0x28 + i] & 0x0F00) >> 8;
+        if (accCol[p + 2] > 7) { accCol[p + 2] -= 16; }
+
+        accCol[p + 3] = (eeData[0x28 + i] & 0xF000) >> 12;
+        if (accCol[p + 3] > 7) { accCol[p + 3] -= 16; }
+    }
+
+    // Set the alpha sensitivity
+    for (int r = 0; r < 24; r++) {
+        for (int c = 0; c < 32; c++) {
+            p = r * 32 + c; // set the pointer to the associated pixels
+            alphaTemp[p] = (eeData[0x40 + p] & 0x03F0) >> 4;
+            if (alphaTemp[p] > 31) { alphaTemp[p] -= 64; }
+
+            alphaTemp[p] *= LSHIFT(1, accRemScale);
+            alphaTemp[p] += (accRow[r] * LSHIFT(1, accRowScale));
+            alphaTemp[p] += (accCol[c] * LSHIFT(1, accColScale));
+            alphaTemp[p] += alphaRef;
+            
+            alphaTemp[p] /= (double) LSHIFT(1, alphaScale);
+            alphaTemp[p] = alphaTemp[p] - calibration_data->tgc * ((calibration_data->cpAlpha[0] + calibration_data->cpAlpha[1]) / 2);
+            alphaTemp[p] = SCALEALPHA / alphaTemp[p];
+        }
+    }
+
+    float temp = alphaTemp[0];
+    // get max alpha
+    for (int i = 1; i < 768; i++) {
+        if (alphaTemp[p] > temp) { temp = alphaTemp[i]; }
+    }
+
+    alphaScale = 0;
+    while (temp < 32768) {
+        temp *= 2; 
+        alphaScale = alphaScale + 1;
+    }
+
+    for(int i = 0; i < 768; i++) {
+        temp = alphaTemp[i] * (double) LSHIFT(1, alphaScale);
+        calibration_data->alpha[i] = (temp + 0.5f);
+    }
+
+    calibration_data->alphaScale = alphaScale;
+}
 
 
 
