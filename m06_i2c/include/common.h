@@ -36,4 +36,19 @@ static inline uint32_t mmio_read(uintptr_t reg) {
     return *(volatile unsigned int *)reg;
 }
 
+// Float absolute value
+static inline double fabs(double x) {
+    uint64_t i;
+    double res;
+    // copy bits from double to an integer to allow bitwise op
+    memcpy(&i, &x, sizeof(i));
+
+    // Mask out the sign bit
+    i &= 0x7FFFFFFFFFFFFFFF;
+
+    // copy bits back to a double
+    memcpy(&res, &i, sizeof(x));
+    return res;
+}
+
 #endif /* _COMMON_H */

@@ -14,6 +14,9 @@ static void ExtractKsToParam(uint16_t* eeData, mlx_param* calibration_data);
 static void ExtractTGCParam(uint16_t *eeData, mlx_param* calibration_data);
 static void ExtractResolutionParam(uint16_t* eeData, mlx_param* calibration_data);
 static void ExtractAlphaParam(uint16_t* eeData, mlx_param* calibration_data);
+static void ExtractOffsetParam(uint16_t* eeData, mlx_param* calibration_data);
+static void ExtractKtaPixelParam(uint16_t* eeData, mlx_param* calibration_data);
+static void ExtractKvPixelParam(uint16_t* eeData, mlx_param* calibration_data);
 
 /**
  * Initialize the I2C Bus associated for the MLX90640.
@@ -138,7 +141,7 @@ uint16_t mlx_getI2CAddr() {
 /**
  * Reads 832 words (16-bit) from the EEPROM Calibration Data
  * 
- * @param eeData The array to store the calibration data in
+ * @param eeData Array to stores EEPROM data
  * 
  * @return Returns a MLX Error Code
  */
@@ -149,6 +152,23 @@ mlx_error mlx_dumpParamEE(uint16_t* eeData) {
     return mlx_i2cRead(MLX_DEV_ADDR, 0x2400, MLX_EEPROM_LEN, eeData);
 }
 
+/**
+ * Extract parameters from the EEPROM data.
+ * 
+ * @param eeData Array that stores the EEPROM data
+ */
+mlx_error mlx_extractParam(uint16_t* eeData, mlx_param* calibration_data) {
+    ExtractVDDParam(eeData, calibration_data);
+    ExtractPTATParam(eeData, calibration_data);
+    ExtractGainParam(eeData, calibration_data);
+    ExtractKsTaParam(eeData, calibration_data);
+    ExtractKsToParam(eeData, calibration_data);
+    ExtractTGCParam(eeData, calibration_data);
+    ExtractResolutionParam(eeData, calibration_data);
+    ExtractAlphaParam(eeData, calibration_data);
+    ExtractOffsetParam(eeData, calibration_data);
+    ExtractKtaPixelParam(eeData, calibration_data);
+}
 /**
  * Calculate VDD value from EEPROM Data and set it to the parameters
  * 
@@ -190,7 +210,7 @@ static void ExtractPTATParam(uint16_t* eeData, mlx_param* calibration_data) {
     if (KtPTAT > 511) { KtPTAT -= 1024; } 
 
     KtPTAT /= LSHIFT(1, 3);
-    calibration_data->KtPTAT;
+    calibration_data->KtPTAT = KtPTAT;
     
     // Calculate vPTAT25
     int16_t vPTAT25 = eeData[0x31];
@@ -239,7 +259,7 @@ static void ExtractKsTaParam(uint16_t* eeData, mlx_param* calibration_data) {
  * @param eeData                EEPROM data from the sensor
  * @param calibration_data      address to the parameter struct
  */
-void ExtractTGCParameters(uint16_t *eeData, mlx_param* calibration_data) {
+void ExtractTGCParam(uint16_t *eeData, mlx_param* calibration_data) {
     float tgc = eeData[60] & 0x00FF;
     if(tgc > 127) { tgc = tgc - 256; }
 
@@ -400,7 +420,183 @@ static void ExtractAlphaParam(uint16_t* eeData, mlx_param* calibration_data) {
     calibration_data->alphaScale = alphaScale;
 }
 
+/**
+ * Calculate Offset value from EEPROM Data and set it to the parameters.
+ * Check 11.1.3/11.1.3.1 in the MLX90640 Datasheet
+ * 
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+static void ExtractOffsetParam(uint16_t* eeData, mlx_param* calibration_data) {
+    int occRow[24];
+    int occCol[32];
+    int p = 0;
 
+    int16_t offsetRef = eeData[0x11];
+    if (offsetRef > 32767) { offsetRef -= 65536; }
 
+    uint8_t occRowScale = BITS(eeData[0x10], 11, 8);
+    uint8_t occColScale = BITS(eeData[0x10],  7, 4);
+    uint8_t occRemScale = BITS(eeData[0x10],  3, 0);
 
+    // Set the OCC Row values
+    for (int i = 0; i < 6; i++) {
+        p = i * 4; // set the pointer to the associated row
+        occRow[p + 0] = (eeData[0x12 + i] & 0x000F);
+        if (occRow[p + 0] > 7) { occRow[p + 0] -= 16; }
 
+        occRow[p + 1] = (eeData[0x12 + i] & 0x00F0) >> 4;
+        if (occRow[p + 1] > 7) { occRow[p + 1] -= 16; }
+
+        occRow[p + 2] = (eeData[0x12 + i] & 0x0F00) >> 8;
+        if (occRow[p + 2] > 7) { occRow[p + 2] -= 16; }
+
+        occRow[p + 3] = (eeData[0x12 + i] & 0xF000) >> 12;
+        if (occRow[p + 3] > 7) { occRow[p + 3] -= 16; }
+    }
+    
+    // Set the OCC Col values
+    for (int i = 0; i < 8; i++) {
+        p = i * 4; // set the pointer to the associated column
+        occCol[p + 0] = (eeData[0x18 + i] & 0x000F);
+        if (occCol[p + 0] > 7) { occCol[p + 0] -= 16; }
+
+        occCol[p + 1] = (eeData[0x18 + i] & 0x00F0) >> 4;
+        if (occCol[p + 1] > 7) { occCol[p + 1] -= 16; }
+
+        occCol[p + 2] = (eeData[0x18 + i] & 0x0F00) >> 8;
+        if (occCol[p + 2] > 7) { occCol[p + 2] -= 16; }
+
+        occCol[p + 3] = (eeData[0x18 + i] & 0xF000) >> 12;
+        if (occCol[p + 3] > 7) { occCol[p + 3] -= 16; }
+    }
+
+    // set the offset values in the calibration data
+    for (int r = 0; r < 24; r++) {
+        for (int c = 0; c < 32; c++) {
+            p = 32 * r + c;
+
+            calibration_data->offset[p] = (eeData[0x40 + p] & 0xFC00) >> 10;
+            if (calibration_data->offset[p] > 31) { calibration_data->offset[p] -= 64; }
+
+            calibration_data->offset[p] *= LSHIFT(1, occRemScale);
+            calibration_data->offset[p] += (offsetRef + (occRow[r] << occRowScale) + (occCol[c] << occColScale));
+        }
+    }
+}
+
+/**
+ * Calculate Kta value per pixel from EEPROM Data and set it to the parameters.
+ * Check 11.1.3/11.1.3.1 in the MLX90640 Datasheet.
+ * 
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+static void ExtractKtaPixelParam(uint16_t* eeData, mlx_param* calibration_data) {
+    int8_t KtaRC[4];
+    uint8_t ktaScale1;
+    uint8_t ktaScale2;
+    float ktaTemp[768];
+    int p = 0;
+    uint8_t split;
+    
+    // R (odd) + C (odd)
+    KtaRC[0] = (eeData[0x36] & 0xFF00) >> 8;
+    if (KtaRC[0] > 127) { KtaRC[0] -= 256; }
+
+    // R (even) + C (odd)
+    KtaRC[2] = (eeData[0x36] & 0x00FF);
+    if (KtaRC[2] > 127) { KtaRC[2] -= 256; }
+
+    // R (odd) + C (even)
+    KtaRC[1] = (eeData[0x37] & 0xFF00) >> 8;
+    if (KtaRC[1] > 127) { KtaRC[1] -= 256; }
+
+    // R (even) + C (even)
+    KtaRC[3] = (eeData[0x37] & 0x00FF);
+    if (KtaRC[3] > 127) { KtaRC[3] -= 256; }
+
+    ktaScale1 = ((eeData[0x38] & 0x00F0) >> 8) + 8;
+    ktaScale2 = (eeData[0x38] & 0x000F);
+
+    for(int r = 0; r < 24; r++)
+    {
+        for(int c = 0; c < 32; c++)
+        {
+            p = 32 * r + c;
+            split = 2*(p/32 - (p/64)*2) + p%2;
+            ktaTemp[p] = (eeData[0x40 + p] & 0x000E) >> 1;
+            if (ktaTemp[p] > 3) { ktaTemp[p] -= 8; }
+            
+            ktaTemp[p] = ktaTemp[p] * (1 << ktaScale2);
+            ktaTemp[p] = KtaRC[split] + ktaTemp[p];
+            ktaTemp[p] /= LSHIFT(1, ktaScale1);
+            //ktaTemp[p] = ktaTemp[p] * mlx90640->offset[p];
+        }
+    }
+
+    // get max kta value
+    float temp = fabs(ktaTemp[0]);
+    for (int i = 1; i < 768; i++) {
+        if (fabs(ktaTemp[i]) > temp) { temp = fabs(ktaTemp[i]); }
+    }
+
+    ktaScale1 = 0;
+    while (temp < 64) {
+        temp = temp * 2;
+        ktaScale1++;
+    }
+
+    for (int i = 0; i < 768; i++) {
+        temp = ktaTemp[i] * LSHIFT(1, ktaScale1);
+        if (temp < 0) {
+            calibration_data->kta[i] = (temp - 0.5f);
+        } else {
+            calibration_data->kta[i] = (temp + 0.5f);
+        }        
+    }
+
+    calibration_data->ktaScale = ktaScale1;
+}
+
+/**
+ * Calculate Kv value per pixel from EEPROM Data and set it to the parameters.
+ * Check 11.1.3/11.1.3.1 in the MLX90640 Datasheet.
+ * 
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+static void ExtractKvPixelParam(uint16_t* eeData, mlx_param* calibration_data) {
+    int8_t kvT[4];
+    uint8_t kvScale;
+    float kvTemp[768];
+    uint8_t split;
+
+    // R (odd) + C (odd)
+    kvT[0] = (eeData[0x34] & 0xF000) >> 12;
+    if (kvT[0] > 7) { kvT[0] -= 16; }
+
+    // R (even) + C (odd)
+    kvT[2] = (eeData[0x34] & 0x0F00) >> 8;
+    if (kvT[2] > 7) { kvT[2] -= 16; }
+
+    // R (odd) + C (even)
+    kvT[1] = (eeData[0x34] & 0x00F0) >> 4;
+    if (kvT[1] > 7) { kvT[1] -= 16; }
+
+    // R (even) + C (even)
+    kvT[3] = (eeData[0x34] & 0x000F);
+    if (kvT[3] > 7) { kvT[3] -= 16; }
+
+    for(int r = 0; r < 24; r++) {
+        for(int c = 0; c < 32; c++) {
+            int p = 32 * r + c;
+            split = 2*(p/32 - (p/64)*2) + p%2;
+            kvTemp[p] = kvT[split];
+            kvTemp[p] /= LSHIFT(1, kvScale);
+        }
+    }
+}

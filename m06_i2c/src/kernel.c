@@ -200,18 +200,14 @@ void main() {
     // Dumping EEPROM data from MLX90640 
     uint16_t* eepromData = (uint16_t *) malloc(sizeof(uint16_t) * MLX_EEPROM_LEN); // allocate memroy 
     mlx_error eepromStat = mlx_dumpParamEE(eepromData);
-    if (eepromStat != MLX_SUCCESS) {
-        uart_printf("\ndumpParamEE: Received error = %d\n", eepromStat);
-    }
+    if (eepromStat != MLX_SUCCESS) { uart_printf("Error: MLX Dump EEPROM data.\n"); }
 
-    uart_printf("EE[%d] = %x\n", 0x32, eepromData[0x32]);
-    float KvPTAT = (float) ((eepromData[0x32] & 0xFC00) >> 10);
-    if (KvPTAT > 31.00) { KvPTAT -= 64.00; }
+    mlx_param calibration_data;
 
-    KvPTAT /= LSHIFT(1, 12);
+    eepromStat = mlx_extractParam(eepromData, &calibration_data);
+    if (eepromStat != MLX_SUCCESS) { uart_printf("Error: MLX Extract Parameter data.\n"); }
 
-    uart_printf("KvPTAT: %.10f\n", KvPTAT);
-
+    // Free the EEPROM data
     free(eepromData);
 
     // DHT11 Temperature Readings

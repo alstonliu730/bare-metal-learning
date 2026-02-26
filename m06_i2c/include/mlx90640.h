@@ -55,7 +55,7 @@ typedef struct mlx90640{
 #define MLX_EEPROM_LEN              832
 
 // Alpha Scale
-#define SCALEALPHA 0.000001f
+#define SCALEALPHA                  0.000001f
 
 // Default 0x33 but found 0x3B as the sensor
 #define MLX_DEV_ADDR                0x3B 
@@ -124,16 +124,26 @@ uint16_t mlx_getStatusReg();
 uint16_t mlx_getI2CAddr();
 
 // ===================================================================
-
 /**
  * Reads 832 words (16-bit) from the EEPROM Calibration Data
  * 
- * @param eeData The array to store the calibration data in
+ * @param eeData Array to stores EEPROM data
  * 
  * @return Returns a MLX Error Code
  */
 mlx_error mlx_dumpParamEE(uint16_t* eeData);
 
+/**
+ * Extract parameters from the EEPROM data.
+ * 
+ * @param eeData Array that stores the EEPROM data
+ */
+mlx_error mlx_extractParam(uint16_t* eeData, mlx_param* calibration_data);
 
-
+/**
+ * Prints the calibration data in the format.
+ * 
+ * @param calibration_data The calculated calibration data
+ */
+void printCalibrationData(mlx_param* calibration_data);
 #endif /* __MLX_90640_H__ */
