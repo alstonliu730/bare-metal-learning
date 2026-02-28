@@ -200,12 +200,12 @@ void main() {
     // Dumping EEPROM data from MLX90640 
     uint16_t* eepromData = (uint16_t *) malloc(sizeof(uint16_t) * MLX_EEPROM_LEN); // allocate memroy 
     mlx_error eepromStat = mlx_dumpParamEE(eepromData);
-    if (eepromStat != MLX_SUCCESS) { uart_printf("Error: MLX Dump EEPROM data.\n"); }
+    if (eepromStat != MLX_SUCCESS) { uart_printf("Error: MLX Dump EEPROM data: %d\n", eepromStat); eepromStat = 0; }
 
     mlx_param calibration_data;
 
     eepromStat = mlx_extractParam(eepromData, &calibration_data);
-    if (eepromStat != MLX_SUCCESS) { uart_printf("Error: MLX Extract Parameter data.\n"); }
+    if (eepromStat != 0) { uart_printf("Error: MLX Extract Parameter data: %d\n", eepromStat); }
 
     // Free the EEPROM data
     free(eepromData);

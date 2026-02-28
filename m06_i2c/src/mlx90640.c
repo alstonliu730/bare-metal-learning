@@ -17,6 +17,12 @@ static void ExtractAlphaParam(uint16_t* eeData, mlx_param* calibration_data);
 static void ExtractOffsetParam(uint16_t* eeData, mlx_param* calibration_data);
 static void ExtractKtaPixelParam(uint16_t* eeData, mlx_param* calibration_data);
 static void ExtractKvPixelParam(uint16_t* eeData, mlx_param* calibration_data);
+static void ExtractCPParam(uint16_t* eeData, mlx_param* calibration_data);
+static void ExtractCILCParam(uint16_t* eeData, mlx_param* calibration_data);
+static int ExtractDeviatingPixels(uint16_t* eeData, mlx_param* calibration_data);
+
+static int checkAdjPixel(uint16_t pix1, uint16_t pix2);
+static int checkEEDataValid(uint16_t* eeData);
 
 /**
  * Initialize the I2C Bus associated for the MLX90640.
@@ -43,6 +49,11 @@ mlx_error mlx_i2cRead(uint8_t dev, uint16_t start, uint16_t nRead, uint16_t *dat
     uint8_t reg[2] = { (uint8_t)(start >> 8), (uint8_t)(start & 0xFF) };
     
     err = i2c_writeReadRepeat(I2C_REG(BSC1_ADDR), dev, (void *)reg, MLX_REG_DLEN, (void *)data, (nRead << 1));
+
+    // reverse the byte order in each 16-bit word
+    for(int i = 0; i < nRead; i++) {
+        data[i] = __builtin_bswap16(data[i]);
+    }
 
     // Translate Error Code
     switch (err) {
@@ -156,18 +167,32 @@ mlx_error mlx_dumpParamEE(uint16_t* eeData) {
  * Extract parameters from the EEPROM data.
  * 
  * @param eeData Array that stores the EEPROM data
+ * @param calibration_data      address to the parameter struct
+ * 
+ * @return Returns an int status
  */
-mlx_error mlx_extractParam(uint16_t* eeData, mlx_param* calibration_data) {
+int mlx_extractParam(uint16_t* eeData, mlx_param* calibration_data) {
+    int err = checkEEDataValid(eeData);
+    if (err != 0) {
+        return err;
+    }
+
     ExtractVDDParam(eeData, calibration_data);
     ExtractPTATParam(eeData, calibration_data);
     ExtractGainParam(eeData, calibration_data);
-    ExtractKsTaParam(eeData, calibration_data);
-    ExtractKsToParam(eeData, calibration_data);
     ExtractTGCParam(eeData, calibration_data);
     ExtractResolutionParam(eeData, calibration_data);
+    ExtractKsTaParam(eeData, calibration_data);
+    ExtractKsToParam(eeData, calibration_data);
+    ExtractCPParam(eeData, calibration_data);
+
     ExtractAlphaParam(eeData, calibration_data);
     ExtractOffsetParam(eeData, calibration_data);
     ExtractKtaPixelParam(eeData, calibration_data);
+    ExtractKvPixelParam(eeData, calibration_data);
+    ExtractCILCParam(eeData, calibration_data);
+    
+    return ExtractDeviatingPixels(eeData, calibration_data);
 }
 /**
  * Calculate VDD value from EEPROM Data and set it to the parameters
@@ -231,9 +256,7 @@ static void ExtractPTATParam(uint16_t* eeData, mlx_param* calibration_data) {
 static void ExtractGainParam(uint16_t* eeData, mlx_param* calibration_data) {
     int16_t gainEE = eeData[0x30];
     
-    if (gainEE > 32767) {
-        gainEE -= 65536;
-    }
+    if ((uint32_t)gainEE > 32767) { gainEE -= 65536; }
 
     calibration_data->gainEE = gainEE;
 }
@@ -246,9 +269,7 @@ static void ExtractGainParam(uint16_t* eeData, mlx_param* calibration_data) {
  */
 static void ExtractKsTaParam(uint16_t* eeData, mlx_param* calibration_data) {
     int16_t KsTaEE = (eeData[0x3C] & 0xFF00) >> 8;
-    if (KsTaEE > 127) {
-        KsTaEE -= 256;
-    }
+    if (KsTaEE > 127) { KsTaEE -= 256; }
 
     calibration_data->KsTa = (float) KsTaEE / (LSHIFT(1, 13));
 }
@@ -260,7 +281,7 @@ static void ExtractKsTaParam(uint16_t* eeData, mlx_param* calibration_data) {
  * @param calibration_data      address to the parameter struct
  */
 void ExtractTGCParam(uint16_t *eeData, mlx_param* calibration_data) {
-    float tgc = eeData[60] & 0x00FF;
+    float tgc = eeData[0x3C] & 0x00FF;
     if(tgc > 127) { tgc = tgc - 256; }
 
     tgc /= 32.0f;
@@ -424,7 +445,6 @@ static void ExtractAlphaParam(uint16_t* eeData, mlx_param* calibration_data) {
  * Calculate Offset value from EEPROM Data and set it to the parameters.
  * Check 11.1.3/11.1.3.1 in the MLX90640 Datasheet
  * 
- * 
  * @param eeData                EEPROM data from the sensor
  * @param calibration_data      address to the parameter struct
  */
@@ -434,7 +454,7 @@ static void ExtractOffsetParam(uint16_t* eeData, mlx_param* calibration_data) {
     int p = 0;
 
     int16_t offsetRef = eeData[0x11];
-    if (offsetRef > 32767) { offsetRef -= 65536; }
+    if ((uint32_t)offsetRef > 32767) { offsetRef -= 65536; }
 
     uint8_t occRowScale = BITS(eeData[0x10], 11, 8);
     uint8_t occColScale = BITS(eeData[0x10],  7, 4);
@@ -490,7 +510,6 @@ static void ExtractOffsetParam(uint16_t* eeData, mlx_param* calibration_data) {
  * Calculate Kta value per pixel from EEPROM Data and set it to the parameters.
  * Check 11.1.3/11.1.3.1 in the MLX90640 Datasheet.
  * 
- * 
  * @param eeData                EEPROM data from the sensor
  * @param calibration_data      address to the parameter struct
  */
@@ -504,19 +523,19 @@ static void ExtractKtaPixelParam(uint16_t* eeData, mlx_param* calibration_data) 
     
     // R (odd) + C (odd)
     KtaRC[0] = (eeData[0x36] & 0xFF00) >> 8;
-    if (KtaRC[0] > 127) { KtaRC[0] -= 256; }
+    if ((uint8_t)KtaRC[0] > 127) { KtaRC[0] -= 256; }
 
     // R (even) + C (odd)
     KtaRC[2] = (eeData[0x36] & 0x00FF);
-    if (KtaRC[2] > 127) { KtaRC[2] -= 256; }
+    if ((uint8_t)KtaRC[2] > 127) { KtaRC[2] -= 256; }
 
     // R (odd) + C (even)
     KtaRC[1] = (eeData[0x37] & 0xFF00) >> 8;
-    if (KtaRC[1] > 127) { KtaRC[1] -= 256; }
+    if ((uint8_t)KtaRC[1] > 127) { KtaRC[1] -= 256; }
 
     // R (even) + C (even)
     KtaRC[3] = (eeData[0x37] & 0x00FF);
-    if (KtaRC[3] > 127) { KtaRC[3] -= 256; }
+    if ((uint8_t)KtaRC[3] > 127) { KtaRC[3] -= 256; }
 
     ktaScale1 = ((eeData[0x38] & 0x00F0) >> 8) + 8;
     ktaScale2 = (eeData[0x38] & 0x000F);
@@ -565,7 +584,6 @@ static void ExtractKtaPixelParam(uint16_t* eeData, mlx_param* calibration_data) 
  * Calculate Kv value per pixel from EEPROM Data and set it to the parameters.
  * Check 11.1.3/11.1.3.1 in the MLX90640 Datasheet.
  * 
- * 
  * @param eeData                EEPROM data from the sensor
  * @param calibration_data      address to the parameter struct
  */
@@ -591,12 +609,203 @@ static void ExtractKvPixelParam(uint16_t* eeData, mlx_param* calibration_data) {
     kvT[3] = (eeData[0x34] & 0x000F);
     if (kvT[3] > 7) { kvT[3] -= 16; }
 
+    kvScale = (eeData[0x38] & 0x0F00) >> 8;
+
     for(int r = 0; r < 24; r++) {
         for(int c = 0; c < 32; c++) {
             int p = 32 * r + c;
             split = 2*(p/32 - (p/64)*2) + p%2;
             kvTemp[p] = kvT[split];
-            kvTemp[p] /= LSHIFT(1, kvScale);
+            kvTemp[p] /= ((double) LSHIFT(1, kvScale));
         }
     }
+
+     // get max kv value
+    float temp = fabs(kvTemp[0]);
+    for (int i = 1; i < 768; i++) {
+        if (fabs(kvTemp[i]) > temp) { temp = fabs(kvTemp[i]); }
+    }
+
+    kvScale = 0;
+    while (temp < 64) {
+        temp = temp * 2;
+        kvScale++;
+    }
+
+    for (int i = 0; i < 768; i++) {
+        temp = kvTemp[i] * LSHIFT(1, kvScale);
+        if (temp < 0) {
+            calibration_data->kv[i] = (temp - 0.5f);
+        } else {
+            calibration_data->kv[i] = (temp + 0.5f);
+        }        
+    }
+
+    calibration_data->kvScale = kvScale;
+}
+
+/**
+ * Calculate Parameters for Compensation Pixel from the given EEPROM Data and set it to the parameters.
+ * Check 11.1.12, 11.1.13, 11.1.14, & 11.1.15 in the MLX90640 Datasheet.
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+static void ExtractCPParam(uint16_t* eeData, mlx_param* calibration_data) {
+    float alphaSP[2];       // alpha coefficient for CP subpages 0 & 1
+    int16_t offsetSP[2];    // Offset values for CP subpages 0 & 1
+    float cpKv;
+    float cpKta;
+    uint8_t alphaScale;
+    uint8_t ktaScale1;
+    uint8_t kvScale;
+
+    alphaScale = ((eeData[0x20] & 0xF000) >> 12) + 27;
+
+    offsetSP[0] = (eeData[0x3A] & 0x3FF);           // offset_CP_sp0
+    if (offsetSP[0] > 511) { offsetSP[0] -= 1024; }
+
+    offsetSP[1] = (eeData[0x3A] & 0xFC00) >> 10;    // offset_CP_sp1_delta
+    if (offsetSP[1] > 31) { offsetSP[1] -= 64; }
+    offsetSP[1] += offsetSP[0];
+
+    alphaSP[0] = (eeData[0x39] & 0x03FF);           // alpha CP sp 0
+    if (alphaSP[0] > 511) { alphaSP[0] -= 1024; }
+    alphaSP[0] /= ((double) LSHIFT(1, alphaScale));
+
+    alphaSP[1] = (eeData[0x39] & 0xFC00) >> 10;     // CP_P1/P0 ratio
+    if (alphaSP[1] > 31) { alphaSP[1] -= 64; }
+    alphaSP[1] = alphaSP[0] * (1 + alphaSP[1] / ((double) LSHIFT(1, 7))); // alpha CP sp 1 
+
+    cpKta = (eeData[0x3B] & 0x00FF);                    // Kta_CP_EE
+    if (cpKta > 127) { cpKta -= 256; }
+
+    ktaScale1 = ((eeData[0x38] & 0x00F0) >> 4) + 8;     // Kta_scale1
+    cpKta /= ((double) LSHIFT(1, ktaScale1));
+    calibration_data->cpKta = cpKta;                    // Kta_CP
+
+    cpKv = (eeData[0x3B] & 0xFF00) >> 8;                // Kv_CP_EE
+    if (cpKv > 127) { cpKv -= 256; }
+    
+    kvScale = (eeData[0x38] & 0x0F00) >> 8;             // Kv_Scale
+    cpKv /= ((double) LSHIFT(1, kvScale));
+    calibration_data->cpKv = cpKv;                      // Kv_CP
+
+    calibration_data->cpAlpha[0] = alphaSP[0];
+    calibration_data->cpAlpha[1] = alphaSP[1];
+    calibration_data->cpOffset[0] = offsetSP[0];
+    calibration_data->cpOffset[1] = offsetSP[1];
+}
+
+/**
+ * Calculate offset for Interleaved Pattern values from the given EEPROM Data and set it to the parameters.
+ * Check 11.1.3.1 in the MLX90640 Datasheet.
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+static void ExtractCILCParam(uint16_t* eeData, mlx_param* calibration_data) {
+    float ilChessC[3];
+    uint8_t calibrationModeEE;
+    
+    calibrationModeEE = (eeData[0x0A] & 0x0800) >> 4;           
+    calibrationModeEE ^= 0x80;
+
+    ilChessC[0] = (eeData[0x35] & 0x003F);
+    if (ilChessC[0] > 31) { ilChessC[0] = ilChessC[0] - 64; }
+    ilChessC[0] /= 16.0f;
+    
+    ilChessC[1] = (eeData[0x35] & 0x07C0) >> 6;
+    if (ilChessC[1] > 15) { ilChessC[1] = ilChessC[1] - 32; }
+    ilChessC[1] /= 2.0f;
+    
+    ilChessC[2] = (eeData[0x35] & 0xF800) >> 11;
+    if (ilChessC[2] > 15) { ilChessC[2] = ilChessC[2] - 32; }
+    ilChessC[2] /= 8.0f;
+    
+    calibration_data->calibrationModeEE = calibrationModeEE;
+    calibration_data->ilChessC[0] = ilChessC[0];
+    calibration_data->ilChessC[1] = ilChessC[1];
+    calibration_data->ilChessC[2] = ilChessC[2];
+}
+
+/**
+ * Calculate if there are outliers in the EEPROM data.
+ * 
+ * @param eeData                EEPROM data from the sensor
+ * @param calibration_data      address to the parameter struct
+ */
+static int ExtractDeviatingPixels(uint16_t* eeData, mlx_param* calibration_data) {
+    uint16_t pixCnt = 0;
+    uint16_t brokenCnt = 0;
+    uint16_t outlierCnt = 0;
+    int stat = 0;
+
+    for(pixCnt = 0; pixCnt < 5; pixCnt ++) {
+        calibration_data->brokenPixels[pixCnt] = 0xFFFF;
+        calibration_data->outlierPixels[pixCnt] = 0xFFFF;
+    }
+    pixCnt = 0; 
+    while(pixCnt < 768 && brokenCnt < 5 && outlierCnt < 5) {
+        uint16_t pixelParam = eeData[0x40 + pixCnt];
+        if (pixelParam == 0) {
+            calibration_data->brokenPixels[brokenCnt] = pixCnt;
+            brokenCnt += 1;
+        } else if ((pixelParam & 0x0001) != 0) {
+            calibration_data->outlierPixels[outlierCnt] = pixCnt;
+            outlierCnt += 1;
+        }
+        pixCnt++;
+    }
+
+    if (brokenCnt > 4) { stat = -3; }
+    else if (outlierCnt > 4) { stat = -4; }
+    else if ((brokenCnt + outlierCnt) > 4) { stat = -5; }
+    else {
+        // Check Adjacent broken pixels
+        for(pixCnt = 0; pixCnt < brokenCnt; pixCnt++) {
+            for(int i = pixCnt + 1; i < brokenCnt; i++) {
+                stat = checkAdjPixel(calibration_data->brokenPixels[pixCnt], calibration_data->brokenPixels[i]);
+                if (stat != 0) { return stat; }
+            }
+        }
+
+        // Check Adjacent outlier pixels
+        for(pixCnt = 0; pixCnt < outlierCnt; pixCnt++) {
+            for(int i = pixCnt + 1; i < outlierCnt; i++) {
+                stat = checkAdjPixel(calibration_data->outlierPixels[pixCnt], calibration_data->outlierPixels[i]);
+                if (stat != 0) { return stat; }
+            }
+        }
+
+        // Check Outlier & broken Pixels
+        for(pixCnt = 0; pixCnt < brokenCnt; pixCnt++) {
+            for(int i = 0; i < outlierCnt; i++) {
+                stat = checkAdjPixel(calibration_data->brokenPixels[pixCnt], calibration_data->outlierPixels[i]);
+                if (stat != 0) { return stat; }
+            }
+        }
+    }
+    return stat;
+}
+
+/**
+ * Checks the difference between the pixels
+ */
+static int checkAdjPixel(uint16_t pix1, uint16_t pix2) {
+    int diffPixel = pix1 - pix2;
+    if ((diffPixel > -34 && diffPixel < -30) ||
+        (diffPixel > -2 && diffPixel < 2) ||
+        (diffPixel > 30 && diffPixel < 34)) {
+            return -6;
+    }
+    return 0;
+}
+
+static int checkEEDataValid(uint16_t* eeData) {
+    int devSel = eeData[0x0A] & 0x0040;
+    if (devSel == 0) {
+        return 0;
+    }
+    return -7;
 }

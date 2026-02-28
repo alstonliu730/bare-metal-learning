@@ -53,6 +53,8 @@ typedef struct mlx90640{
 
 // EEPROM Dump Length in Words
 #define MLX_EEPROM_LEN              832
+#define MLX_FRAME_LEN               834
+#define MLX_TOTAL_PIX               768
 
 // Alpha Scale
 #define SCALEALPHA                  0.000001f
@@ -69,6 +71,16 @@ typedef struct mlx90640{
 
 // MLX EEPROM Start address
 #define MLX_EEPROM_ADDR_START       0x2400
+
+// MLX Refresh Rate
+#define FPS0_5HZ                    0x00
+#define FPS1HZ                      0x01
+#define FPS2HZ                      0x02
+#define FPS4HZ                      0x03
+#define FPS8HZ                      0x04
+#define FPS16HZ                     0x05
+#define FPS32HZ                     0x06
+#define FPS64HZ                     0x07
 
 /**
  * Initialize the I2C Bus associated for the MLX90640.
@@ -137,13 +149,9 @@ mlx_error mlx_dumpParamEE(uint16_t* eeData);
  * Extract parameters from the EEPROM data.
  * 
  * @param eeData Array that stores the EEPROM data
- */
-mlx_error mlx_extractParam(uint16_t* eeData, mlx_param* calibration_data);
-
-/**
- * Prints the calibration data in the format.
+ * @param calibration_data      address to the parameter struct
  * 
- * @param calibration_data The calculated calibration data
+ * @return Returns an int status
  */
-void printCalibrationData(mlx_param* calibration_data);
+int mlx_extractParam(uint16_t* eeData, mlx_param* calibration_data);
 #endif /* __MLX_90640_H__ */

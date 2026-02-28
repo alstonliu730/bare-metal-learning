@@ -239,6 +239,15 @@ void uart_printf(const char *fmt, ...) {
         if (*fmt == '%') {
             fmt++; // get the character after the %
             
+            // Parse digit precision
+            if (*fmt >= '0' && *fmt <= '9') {
+                while (*fmt != '.' && *fmt != '\0' && *fmt >= '0' && *fmt <= '9') {
+                    digit_prec *= 10;
+                    digit_prec += (*fmt - '0');
+                    fmt++;
+                }
+            }
+
             // Parse precision BEFORE the switch
             if (*fmt == '.') {
                 fmt++; // skip '.'
@@ -249,6 +258,7 @@ void uart_printf(const char *fmt, ...) {
                 }
             }
 
+            // Check what data format to use
             switch(*fmt) {
                     case 'f':
                         // Check if the precision is set
