@@ -310,26 +310,26 @@ i2c_status i2c_writeReadRepeat(volatile i2c_reg_t* bus, uint8_t dev,
     wait_us(200);
 
     // track number of bytes read
-    int count = nRead;
+    int count = 0;
     
     // set the read buffer pointer
     uint8_t *pReadBuf = (uint8_t *) readBuf;
     
     // read from the fifo until done
     while (!(bus->status & S_DONE)) {
-        while ((bus->status & S_RXD) && count > 0) {
+        while ((bus->status & S_RXD) && count < nRead ) {
             // uint32_t val = mmio_read(BSC1_ADDR + I2C_FIFO_OFFSET);
             uint32_t val = bus->fifo;
-            pReadBuf[--count] = (uint8_t) val;
+            pReadBuf[count++] = (uint8_t) val;
             // uart_printf("   %x\n", val);
         }   
     }
     
     // Read any remainder data
-    while ((bus->status & S_RXD) && count > 0) {
+    while ((bus->status & S_RXD) && count < nRead) {
         // uint32_t val = mmio_read(BSC1_ADDR + I2C_FIFO_OFFSET);
         uint32_t val = bus->fifo;
-        pReadBuf[--count] = (uint8_t) val;
+        pReadBuf[count++] = (uint8_t) val;
         // uart_printf("   %x\n", val);
     }
 
@@ -338,12 +338,12 @@ i2c_status i2c_writeReadRepeat(volatile i2c_reg_t* bus, uint8_t dev,
 
     // Check for status
     if (bus->status & S_ERR) {
-        bus->status = S_ERR;
+        bus->status = S_ERR; // clear error status
         return I2C_ACK_ERR;
     } else if (bus->status & S_CLKTOUT) {
         bus->status = S_CLKTOUT;
         return I2C_CLK_TIMEOUT;
-    } else if (count > 0) {
+    } else if (count < nRead) {
         return I2C_DATA_LOSS;
     } 
         
