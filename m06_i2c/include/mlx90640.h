@@ -53,7 +53,8 @@ typedef struct mlx90640{
 
 // EEPROM Dump Length in Words
 #define MLX_EEPROM_LEN              832
-#define MLX_FRAME_LEN               834
+#define MLX_PIXEL_LEN               832
+#define MLX_FRAME_DATA_LEN          834
 #define MLX_TOTAL_PIX               768
 
 // Alpha Scale
@@ -68,6 +69,10 @@ typedef struct mlx90640{
 #define MLX_CTRL2                   0x800E
 #define MLX_I2C_CONFIG              0x800F
 #define MLX_I2C_ADDR                0x8010
+
+// MLX Frame Data Range
+#define MLX_FRAME_ADDR_START        0x0400
+#define MLX_FRAME_ADDR_END          0x07FF
 
 // MLX EEPROM Start address
 #define MLX_EEPROM_ADDR_START       0x2400
@@ -102,8 +107,8 @@ void mlx_i2cInit();
 mlx_error mlx_i2cRead(uint8_t dev, uint16_t start, uint16_t nRead, uint16_t *data);
 
 /**
- * Write a number of words to a selected MLX90640 device. 
- * The function reads back the data after the write operation is done.
+ * Write a number of words to a selected MLX90640 device. The function reads back the data after the write operation is done.
+ * This function is responsible for adding the register address to the beginning of the data array.
  * 
  * @param dev           device address of the MLX90640 (default: 0x33)
  * @param writeAddr     memory address in the MLX90640 to write to
@@ -112,7 +117,7 @@ mlx_error mlx_i2cRead(uint8_t dev, uint16_t start, uint16_t nRead, uint16_t *dat
  * 
  * @return              Returns a MLX Error Code
  */
-mlx_error mlx_i2cWrite(uint8_t dev, uint16_t writeAddr, uint16_t nWrite, uint16_t *data);
+mlx_error mlx_i2cWrite(uint8_t dev, uint16_t writeAddr, uint16_t nWrite, const uint16_t *data);
 
 /**
  * Get the 16-bit value of the control register 1 in the internal regs.
@@ -154,4 +159,17 @@ mlx_error mlx_dumpParamEE(uint16_t* eeData);
  * @return Returns an int status
  */
 int mlx_extractParam(uint16_t* eeData, mlx_param* calibration_data);
+
+/**
+ * Reads the data from the RAM portion of the MLX90640 sensor.
+ * This reads around 832 16-bit words from the RAM and stores it into the FrameData parameter.
+ * However, users need to make sure to allocate 834 16-bit words to store the metadata of the status
+ * register and control register.
+ * 
+ * @param frameData The data read from the MLX90640
+ * 
+ * @return MLX Error Status
+ */
+mlx_error mlx_getFrameData(uint16_t* frameData);
+
 #endif /* __MLX_90640_H__ */

@@ -46,11 +46,12 @@ inline void mlx_i2cInit() {
 mlx_error mlx_i2cRead(uint8_t dev, uint16_t start, uint16_t nRead, uint16_t *data) {
     i2c_status err;
 
+    // set write buffer as the register address in big endian
     uint8_t reg[2] = { (uint8_t)(start >> 8), (uint8_t)(start & 0xFF) };
     
     err = i2c_writeReadRepeat(I2C_REG(BSC1_ADDR), dev, (void *)reg, MLX_REG_DLEN, (void *)data, (nRead << 1));
 
-    // reverse the byte order in each 16-bit word
+    // reverse the byte order in each 16-bit word back to little endian
     for(int i = 0; i < nRead; i++) {
         data[i] = __builtin_bswap16(data[i]);
     }
@@ -69,8 +70,8 @@ mlx_error mlx_i2cRead(uint8_t dev, uint16_t start, uint16_t nRead, uint16_t *dat
 }
 
 /**
- * Write a number of words to a selected MLX90640 device. 
- * The function reads back the data after the write operation is done.
+ * Write a number of words to a selected MLX90640 device. The function reads back the data after the write operation is done.
+ * This function is responsible for adding the register address to the beginning of the data array.
  * 
  * @param dev           device address of the MLX90640 (default: 0x33)
  * @param writeAddr     memory address in the MLX90640 to write to
@@ -79,11 +80,28 @@ mlx_error mlx_i2cRead(uint8_t dev, uint16_t start, uint16_t nRead, uint16_t *dat
  * 
  * @return              Returns a MLX Error Code
  */
-mlx_error mlx_i2cWrite(uint8_t dev, uint16_t writeAddr, uint16_t nWrite, uint16_t *data) {
-    i2c_status code = i2c_blocking_send(I2C_REG(BSC1_ADDR), dev, writeAddr, (nWrite << 1), (uint8_t *)data);
+mlx_error mlx_i2cWrite(uint8_t dev, uint16_t writeAddr, uint16_t nWrite, uint16_t* data) {
+    i2c_status err;
+
+    // Create new array to insert the register address
+    uint16_t* writeData = (uint16_t *) malloc(sizeof(uint16_t) * (nWrite + 1));
+
+    // add register address to the write buffer in Big Endian
+    writeData[0] = __builtin_bswap16(writeAddr);
+
+    // Reverse bytes to big endian before sending the data
+    for(int i = 1; i < (nWrite + 1); i++) {
+        writeData[i] = __builtin_bswap16(data[i]);
+    }
+
+    // send the i2c send command
+    err = i2c_blocking_send(I2C_REG(BSC1_ADDR), dev, ((nWrite + 1) << 1), (uint8_t *)writeData);
+    
+    // Free the memory from the writeData 
+    free(writeData);
 
     // Translate Error Code
-    switch (code) {
+    switch (err) {
         case I2C_SUCCESS:
             return MLX_SUCCESS;
         case I2C_ACK_ERR:
@@ -808,4 +826,63 @@ static int checkEEDataValid(uint16_t* eeData) {
         return 0;
     }
     return -7;
+}
+
+/**
+ * Reads the data from the RAM portion of the MLX90640 sensor.
+ * This reads around 832 16-bit words from the RAM and stores it into the FrameData parameter.
+ * However, users need to make sure to allocate 834 16-bit words to store the metadata of the status
+ * register and control register.
+ * 
+ * @param frameData The data read from the MLX90640
+ * 
+ * @return MLX Error Status
+ */
+mlx_error mlx_getFrameData(uint16_t* frameData) {
+    uint16_t dataReady = 0;
+    mlx_error err;
+    uint16_t statusReg;
+    uint16_t controlReg;
+    static const uint16_t clearStatReg = 0x0030;
+
+    // Check if the data is ready
+    while (dataReady == 0) {
+        err = mlx_i2cRead(MLX_DEV_ADDR, MLX_STATUS, 1, &statusReg);
+        if(err != MLX_SUCCESS) {
+            return err;
+        }
+        dataReady = statusReg & BIT(3);
+    }
+    
+    // clear the status register
+    err = mlx_i2cWrite(MLX_DEV_ADDR, MLX_STATUS, 1, &clearStatReg);
+    if (err != MLX_SUCCESS) {
+        return err;
+    }
+
+    // read the frame data from RAM (pixel data + aux data)
+    err = mlx_i2cRead(MLX_DEV_ADDR, MLX_FRAME_ADDR_START, MLX_PIXEL_LEN, frameData);
+    if (err != MLX_SUCCESS) {
+        return err;
+    }
+    
+    // read the status register
+    err = mlx_i2cRead(MLX_DEV_ADDR, MLX_STATUS, 1, &statusReg);
+    if (err != MLX_SUCCESS) {
+        return err;
+    }
+
+    // read the controll register
+    err = mlx_i2cRead(MLX_DEV_ADDR, MLX_CTRL1, 1, &controlReg);
+    if (err != MLX_SUCCESS) {
+        return err;
+    }
+
+    // store the control register into the frame data resulting array
+    frameData[832] = controlReg;
+    
+    // store the subpage data into the frame data array
+    frameData[833] = (statusReg & BIT(0));
+    
+    // Validate Aux & Frame data
 }

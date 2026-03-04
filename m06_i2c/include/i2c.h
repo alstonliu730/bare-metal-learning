@@ -187,15 +187,18 @@ i2c_status i2c_writeReadRepeat(volatile i2c_reg_t* bus, uint8_t dev,
 
 /**
  * Polling method for sending data to the slave drive. Waits until the end of transmission.
+ * Caller is responsible for allocating memory for the buffer and providing the correct amount of data that 
+ * will be written using bytes as the measurement.
+ * The buffer and size will need to include the register address depending on the i2c device communication protocol.
+ * For example, the MLX90640 requires a 16-bit register address to access the internal register map.
  * 
- * @param bus           i2c bus base address
- * @param dev           device address to the slave drive
- * @param reg           register address in the i2c device
- * @param size          number of bytes in the buffer
- * @param buf           address to the buffer
+ * @param base  i2c bus base address
+ * @param dev   device address to the slave drive
+ * @param buf   address to the buffer
+ * @param size  number of bytes in the buffer
  * 
- * @return              An i2c status code
+ * @return An i2c status code
  */
-i2c_status i2c_blocking_send(volatile i2c_reg_t* bus, uint8_t dev, uint32_t reg, uint32_t size, uint8_t* buf);
+i2c_status i2c_blocking_send(volatile i2c_reg_t* bus, uint8_t dev, const uint32_t size, const void* buf);
 
 #endif /* __I2C_H__*/

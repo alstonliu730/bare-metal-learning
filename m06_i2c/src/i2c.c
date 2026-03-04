@@ -352,6 +352,10 @@ i2c_status i2c_writeReadRepeat(volatile i2c_reg_t* bus, uint8_t dev,
 
 /**
  * Polling method for sending data to the slave drive. Waits until the end of transmission.
+ * Caller is responsible for allocating memory for the buffer and providing the correct amount of data that 
+ * will be written using bytes as the measurement.
+ * The buffer and size will need to include the register address depending on the i2c device communication protocol.
+ * For example, the MLX90640 requires a 16-bit register address to access the internal register map.
  * 
  * @param base  i2c bus base address
  * @param dev   device address to the slave drive
@@ -360,37 +364,39 @@ i2c_status i2c_writeReadRepeat(volatile i2c_reg_t* bus, uint8_t dev,
  * 
  * @return An i2c status code
  */
-i2c_status i2c_blocking_send(volatile i2c_reg_t* bus, uint8_t dev, uint32_t reg, uint32_t size, uint8_t* buf) {
+i2c_status i2c_blocking_send(volatile i2c_reg_t* bus, uint8_t dev, const uint32_t size, const void* buf) {
+    // Check the input validity
+    if (size == 0 || buf == NULL || bus == NULL) {
+        return I2C_INV_INPUT;
+    }
+
     // Reset the i2c bus
     i2c_reset(bus);
 
-    // Check if the i2c bus is enabled
+    // check if the i2c bus is enabled
     if (!(bus->control & C_ENABLE)) {
         return I2C_NOT_ENABLED;
-    }
-
-    if (size == 0 || buf == NULL) {
-        return I2C_INV_INPUT;
     }
 
     // set slave address
     i2c_setDevAddr(bus, dev, I2C_7BIT);
 
     // set number of bytes to write
-    bus->dlen = size + WRITE_REG_DLEN;
+    bus->dlen = size;
 
-    // set register address (MSB first)
-    bus->fifo = BITS(reg, 15, 8);
-    bus->fifo = BITS(reg, 7, 0);
-
+    // convert buffer to uint8_t sized array
+    const uint8_t* writeBuf = (const uint8_t *) buf;
+    
     // check if the fifo can accept data or when there's no data left
-    int count = 0;
-    while ((bus->status & S_TXD) && count < (int) size) {
-        bus->fifo = buf[count++];
+    uint32_t count = 0;
+    while ((bus->status & S_TXD) && count < size) {
+        bus->fifo = writeBuf[count++];
     }
-
+    
+    uint64_t daif = critical_section_enter();   // critical section start
     // start write transfer
     bus->control |= (C_ENABLE | C_START);
+    critical_section_exit(daif);                // critical section stop
 
     // wait until the Transfer started
     while (!(bus->status & S_TA));
@@ -398,21 +404,23 @@ i2c_status i2c_blocking_send(volatile i2c_reg_t* bus, uint8_t dev, uint32_t reg,
     // check for active transfer and see if there's still data to write to
     while (!(bus->status & (S_DONE | S_CLKTOUT))) {
         // check if there's still data in the buffer
-        if((bus->status & S_TXD) && count < (int) size) {    
-            bus->fifo = buf[count++];
+        if((bus->status & S_TXD) && count < size) {    
+            bus->fifo = writeBuf[count++];
         }
 
-        // Return the Acknowledge Error 
+        // Return the No Acknowledgement Error 
         if (bus->status & S_ERR) {
-            // disable the i2c controller bus
-            bus->control = (uint32_t)(C_DISABLE | C_CLEAR);
-            uart_printf("i2c_writeReadRepeat: ACK Error detected.\n");
+            // clear the fifo and stop writing into the FIFO.
+            bus->control = C_CLEAR;
+            uart_printf("i2c_blocking_send: ACK Error detected.\n");
             return I2C_ACK_ERR;
         }
     }
 
     if (bus->status & S_CLKTOUT) {
         return I2C_CLK_TIMEOUT;
+    } else if (bus->status & S_ERR) {
+        return I2C_ACK_ERR;
     } else {
         return I2C_SUCCESS;
     }
