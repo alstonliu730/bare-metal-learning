@@ -9,14 +9,26 @@
 // uses the two's complement to store its value.
 //*********************************
 
-// MLX90640 Status Error Codes
+// MLX90640 Refresh rate teh
 typedef enum {
-    MLX_SUCCESS = 0,
-    MLX_NACK,
-    MLX_CORRUPT,
-    MLX_UNKNOWN_ERR
-} mlx_error;
+    MLX_05HZ = 0b000,
+    MLX_1HZ  = 0b001,
+    MLX_2HZ  = 0b010,
+    MLX_4HZ  = 0b011,
+    MLX_8HZ  = 0b100,
+    MLX_16HZ = 0b101,
+    MLX_32HZ = 0b110,
+    MLX_64HZ = 0b111
+} mlx_refresh_rate;
 
+// MLX90640 ADC resolution
+typedef enum {
+    MLX_16BIT = 0b00,
+    MLX_17BIT = 0b01,
+    MLX_18BIT = 0b10,
+    MLX_19BIT = 0b11
+} mlx_adc_res;
+ 
 // MLX90640 Calibration Params
 typedef struct mlx90640{
     int16_t kVdd;
@@ -102,9 +114,9 @@ void mlx_i2cInit();
  * @param nRead         Number of 16-bits words to be read
  * @param data          pointer to the memory location where the data is stored
  * 
- * @return              Returns a MLX Error Code
+ * @return              Status 
  */
-mlx_error mlx_i2cRead(uint8_t dev, uint16_t start, uint16_t nRead, uint16_t *data);
+int mlx_i2cRead(uint8_t dev, uint16_t start, uint16_t nRead, uint16_t *data);
 
 /**
  * Write a number of words to a selected MLX90640 device. The function reads back the data after the write operation is done.
@@ -117,28 +129,66 @@ mlx_error mlx_i2cRead(uint8_t dev, uint16_t start, uint16_t nRead, uint16_t *dat
  * 
  * @return              Returns a MLX Error Code
  */
-mlx_error mlx_i2cWrite(uint8_t dev, uint16_t writeAddr, uint16_t nWrite, const uint16_t *data);
+int mlx_i2cWrite(uint8_t dev, uint16_t writeAddr, uint16_t nWrite, const uint16_t *data);
 
 /**
  * Get the 16-bit value of the control register 1 in the internal regs.
  * 
- * @return Control Register 1 value
+ * @param ctrlReg pointer to the 16-bit resulting variable
+ * 
+ * @return MLX error status value
  */
-uint16_t mlx_getCtrlReg1();
+int mlx_getCtrlReg1(uint16_t* ctrlReg);
 
 /**
  * Get the 16-bit value of the status register in the internal regs.
  * 
- * @return Status Register
+ * @param statReg pointer to the 16-bit resulting variable 
+ * 
+ * @return MLX error status value
  */
-uint16_t mlx_getStatusReg();
+int mlx_getStatusReg(uint16_t* statReg);
 
 /**
  * Get the 8-bit value of the i2c address in the regs
  * 
- * @return I2C Address
+ * @param i2cAddr pointer to the 16-bit resulting variable
+ * 
+ * @return MLX error status value
  */
-uint16_t mlx_getI2CAddr();
+int mlx_getI2CAddr(uint16_t* i2cAddr);
+
+/**
+ * Set the Refresh Rate of the MLX90640.
+ * 
+ * @param fps Number of frames per second
+ * 
+ * @return An integer error status
+ */
+int mlx_setRefreshRate(mlx_refresh_rate fps);
+
+/**
+ * Sets the ADC resolution mode in the MLX90640.
+ * 
+ * @param res ADC resolution option
+ * 
+ * @return An integer error status
+ */
+int mlx_setResolution(mlx_adc_res res);
+
+/**
+ * Setting the data acquisition mode to Chess Mode
+ * 
+ * @return An integer error status
+ */
+int mlx_setChessMode();
+
+/**
+ * Setting the data acquisition mode to Interleave Mode
+ * 
+ * @return An integer error status
+ */
+int mlx_setInterleaveMode();
 
 // ===================================================================
 /**
@@ -148,7 +198,7 @@ uint16_t mlx_getI2CAddr();
  * 
  * @return Returns a MLX Error Code
  */
-mlx_error mlx_dumpParamEE(uint16_t* eeData);
+int mlx_dumpParamEE(uint16_t* eeData);
 
 /**
  * Extract parameters from the EEPROM data.
@@ -156,10 +206,11 @@ mlx_error mlx_dumpParamEE(uint16_t* eeData);
  * @param eeData Array that stores the EEPROM data
  * @param calibration_data      address to the parameter struct
  * 
- * @return Returns an int status
+ * @return An integer error status
  */
 int mlx_extractParam(uint16_t* eeData, mlx_param* calibration_data);
 
+// ===================================================================
 /**
  * Reads the data from the RAM portion of the MLX90640 sensor.
  * This reads around 832 16-bit words from the RAM and stores it into the FrameData parameter.
@@ -168,8 +219,28 @@ int mlx_extractParam(uint16_t* eeData, mlx_param* calibration_data);
  * 
  * @param frameData The data read from the MLX90640
  * 
- * @return MLX Error Status
+ * @return Subpage number or error status
  */
-mlx_error mlx_getFrameData(uint16_t* frameData);
+int mlx_getFrameData(uint16_t* frameData);
+
+/**
+ * Calculates the supply voltage value using the calibration & Aux data from RAM
+ * in the MLX90640 Data registers.
+ * 
+ * @param frameData raw data from the captured frame
+ * @param params    Calculated Parameters from EEPROM
+ * 
+ * @return supply voltage value
+ */
+float mlx_getFrameVdd(uint16_t* frameData, const mlx_param* params);
+
+/**
+ * Calculates the Ambient Temperature using the calibration & Aux data from RAM
+ * in the MLX90640 Data registers.
+ * 
+ * @param frameData raw data from the captured frame
+ * @param params    Calculated Parameters from EEPROM
+ */
+float mlx_getFrameTa(uint16_t* frameData, const mlx_param* params);
 
 #endif /* __MLX_90640_H__ */

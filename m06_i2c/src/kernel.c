@@ -188,30 +188,36 @@ void main() {
     wait_ms(1000);
 
     // MLX90640 Test
-    uint16_t mlx_ctrlVal = mlx_getCtrlReg1();
+    uint16_t mlx_ctrlVal;
+    mlx_getCtrlReg1(&mlx_ctrlVal);
     uart_printf("MLX90640 Control Reg: %x\n", mlx_ctrlVal);
 
-    uint16_t mlx_statVal = mlx_getStatusReg();
+    uint16_t mlx_statVal;
+    mlx_getStatusReg(&mlx_statVal);
     uart_printf("MLX90640 Status Reg: %x\n", mlx_statVal);
 
-    uint16_t mlx_i2cAddr = mlx_getI2CAddr();
+    uint16_t mlx_i2cAddr;
+    mlx_getI2CAddr(mlx_i2cAddr);
     uart_printf("MLX90640 I2C Address: %x\n", mlx_i2cAddr);
 
     // Dumping EEPROM data from MLX90640 
     uint16_t* eepromData = (uint16_t *) malloc(sizeof(uint16_t) * MLX_EEPROM_LEN); // allocate memroy 
-    mlx_error eepromStat = mlx_dumpParamEE(eepromData);
-    if (eepromStat != MLX_SUCCESS) { uart_printf("Error: MLX Dump EEPROM data: %d\n", eepromStat); eepromStat = 0; }
+    int eepromStatus = mlx_dumpParamEE(eepromData);
+    if (eepromStatus != 0) { uart_printf("Error: MLX Dump EEPROM data: %d\n", eepromStatus); eepromStatus = 0; }
 
+    // Extract parameters from the EEPROM
     mlx_param calibration_data;
+    eepromStatus = mlx_extractParam(eepromData, &calibration_data);
+    if (eepromStatus != 0) { uart_printf("Error: MLX Extract Parameter data: %d\n", eepromStatus); }
 
-    eepromStat = mlx_extractParam(eepromData, &calibration_data);
-    if (eepromStat != 0) { uart_printf("Error: MLX Extract Parameter data: %d\n", eepromStat); }
-
+    // Get Frame Data from the sensor
+    uint16_t* frameData = (uint16_t *) malloc(sizeof(uint16_t) * MLX_FRAME_DATA_LEN);
+    
     // Free the EEPROM data
     free(eepromData);
 
     // DHT11 Temperature Readings
-    int* dht_data = (int *) malloc(sizeof(int) * MAX_DHT_INPUT);
+    int* dht_data = (int *) malloc(sizeof(int) * DHT_MAX_INPUT);
     
     // Clear screen without clearing previous output
     for(int i = 0; i < 16; i++) {

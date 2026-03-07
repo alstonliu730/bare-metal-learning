@@ -18,7 +18,7 @@ int read_dht11_data(int* data) {
     uint8_t i, bits = 0;
 
     // clean data output
-    for(int k = 0; k < MAX_DHT_INPUT; k++) {
+    for(int k = 0; k < DHT_MAX_INPUT; k++) {
         data[k] = 0;
     }
 
@@ -35,7 +35,7 @@ int read_dht11_data(int* data) {
     gpio_function(DHT_GPIO_PIN, GPIO_FUNCTION_IN);
     gpio_pull(DHT_GPIO_PIN, PULL_UP);
 
-    for(i = 0; i < MAX_TIMINGS; i++) {
+    for(i = 0; i < DNT_MAX_TIMINGS; i++) {
         // reset counter 
         counter = 0;
         uint64_t now = get_timer64();
@@ -63,7 +63,7 @@ int read_dht11_data(int* data) {
     }
 
     // Check if the temperature returned the right amount of data
-    if ((bits < 40) || (data[4] != ((data[3] + data[2] + data[1] + data[0]) & CHECKSUM_MASK))) 
+    if ((bits < 40) || (data[4] != ((data[3] + data[2] + data[1] + data[0]) & DHT_CHECKSUM_MASK))) 
     {
         irq_enable();
         uart_printf("Invalid data, clearing data array.\n");

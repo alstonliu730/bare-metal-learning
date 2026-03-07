@@ -43,7 +43,7 @@ inline void mlx_i2cInit() {
  * 
  * @return              Returns a MLX Error Code
  */
-mlx_error mlx_i2cRead(uint8_t dev, uint16_t start, uint16_t nRead, uint16_t *data) {
+int mlx_i2cRead(uint8_t dev, uint16_t start, uint16_t nRead, uint16_t *data) {
     i2c_status err;
 
     // set write buffer as the register address in big endian
@@ -56,17 +56,8 @@ mlx_error mlx_i2cRead(uint8_t dev, uint16_t start, uint16_t nRead, uint16_t *dat
         data[i] = __builtin_bswap16(data[i]);
     }
 
-    // Translate Error Code
-    switch (err) {
-        case I2C_SUCCESS:
-            return MLX_SUCCESS;
-        case I2C_ACK_ERR:
-            return MLX_NACK;
-        case I2C_DATA_LOSS:
-            return MLX_CORRUPT;
-        default:
-            return MLX_UNKNOWN_ERR;
-    }
+    // Return i2c error code
+    return -err;
 }
 
 /**
@@ -80,7 +71,7 @@ mlx_error mlx_i2cRead(uint8_t dev, uint16_t start, uint16_t nRead, uint16_t *dat
  * 
  * @return              Returns a MLX Error Code
  */
-mlx_error mlx_i2cWrite(uint8_t dev, uint16_t writeAddr, uint16_t nWrite, uint16_t* data) {
+int mlx_i2cWrite(uint8_t dev, uint16_t writeAddr, uint16_t nWrite, const uint16_t* data) {
     i2c_status err;
 
     // Create new array to insert the register address
@@ -100,71 +91,65 @@ mlx_error mlx_i2cWrite(uint8_t dev, uint16_t writeAddr, uint16_t nWrite, uint16_
     // Free the memory from the writeData 
     free(writeData);
 
-    // Translate Error Code
-    switch (err) {
-        case I2C_SUCCESS:
-            return MLX_SUCCESS;
-        case I2C_ACK_ERR:
-            return MLX_NACK;
-        case I2C_DATA_LOSS:
-            return MLX_CORRUPT;
-        default:
-            return MLX_UNKNOWN_ERR;
-    }
+    // Return i2c error code
+    return -err;
 }
 
 /**
  * Get the 16-bit value of the control register 1 in the internal regs.
  * 
+ * @param ctrlReg pointer to the 16-bit resulting variable
+ * 
  * @return Control Register 1 value
  */
-uint16_t mlx_getCtrlReg1() {
-    uint16_t res = 0;
-
+int mlx_getCtrlReg1(uint16_t* ctrlReg) {
     // use i2c to receive control reg
-    mlx_error stat = mlx_i2cRead(MLX_DEV_ADDR, MLX_CTRL1, 1, &res);
-    if (stat != MLX_SUCCESS) {
-        uart_printf("MLX90640: getCtrlReg1 received an error: %d\n", (int) stat);
+    int err = mlx_i2cRead(MLX_DEV_ADDR, MLX_CTRL1, 1, ctrlReg);
+    if (err != 0) {
+         uart_printf("MLX90640: getCtrlReg received an error: %d\n", err);
     }
 
-    // return the result
-    return res;
+    // return error status
+    return err;
 }
 
 /**
  * Get the 16-bit value of the status register in the internal regs.
  * 
- * @return Status Register Value
+ * @param statReg pointer to the 16-bit resulting variable 
+ * 
+ * @return MLX error status value
  */
-uint16_t mlx_getStatusReg() {
-    uint16_t res = 0;
-
-    // use i2c to receive status reg
-    mlx_error stat = mlx_i2cRead(MLX_DEV_ADDR, MLX_STATUS, 1, &res);
-    if (stat != MLX_SUCCESS) {
-        uart_printf("MLX90640: getStatusReg received an error: %d\n", (int) stat);
+int mlx_getStatusReg(uint16_t* statReg) {
+    int err = mlx_i2cRead(MLX_DEV_ADDR, MLX_STATUS, 1, statReg);
+    if (err != 0) {
+        uart_printf("MLX90640: getStatusReg received an error: %d\n", err);
     }
 
-    // return the result
-    return res;
+    // return error status
+    return err;
 }
 
 /**
  * Get the 8-bit value of the i2c address in the regs
  * 
- * @return I2C Address
+ * @param i2cAddr pointer to the 16-bit resulting variable
+ * 
+ * @return MLX error status value
  */
-uint16_t mlx_getI2CAddr() {
-    uint16_t res = 0;
+int mlx_getI2CAddr(uint16_t* i2cAddr) {
+    uint16_t res;
 
     // use i2c to receive status reg
-    mlx_error stat = mlx_i2cRead(MLX_DEV_ADDR, MLX_I2C_ADDR, 1, &res);
-    if (stat != MLX_SUCCESS) {
-        uart_printf("MLX90640: getStatusReg received an error: %d\n", (int) stat);
+    int err = mlx_i2cRead(MLX_DEV_ADDR, MLX_I2C_ADDR, 1, &res);
+    if (err != 0) {
+        uart_printf("MLX90640: getI2CAddr received an error: %d\n", err);
     }
 
+    *i2cAddr = res & 0xFF;
+
     // return the result
-    return res;
+    return err;
 }
 
 /**
@@ -174,7 +159,7 @@ uint16_t mlx_getI2CAddr() {
  * 
  * @return Returns a MLX Error Code
  */
-mlx_error mlx_dumpParamEE(uint16_t* eeData) {
+int mlx_dumpParamEE(uint16_t* eeData) {
     // Clear data from array
     memset(eeData, 0, MLX_EEPROM_LEN * sizeof(uint16_t));
 
@@ -836,11 +821,11 @@ static int checkEEDataValid(uint16_t* eeData) {
  * 
  * @param frameData The data read from the MLX90640
  * 
- * @return MLX Error Status
+ * @return Subpage number or error status
  */
-mlx_error mlx_getFrameData(uint16_t* frameData) {
+int mlx_getFrameData(uint16_t* frameData) {
     uint16_t dataReady = 0;
-    mlx_error err;
+    int err;
     uint16_t statusReg;
     uint16_t controlReg;
     static const uint16_t clearStatReg = 0x0030;
@@ -848,7 +833,7 @@ mlx_error mlx_getFrameData(uint16_t* frameData) {
     // Check if the data is ready
     while (dataReady == 0) {
         err = mlx_i2cRead(MLX_DEV_ADDR, MLX_STATUS, 1, &statusReg);
-        if(err != MLX_SUCCESS) {
+        if(err != 0) {
             return err;
         }
         dataReady = statusReg & BIT(3);
@@ -856,25 +841,25 @@ mlx_error mlx_getFrameData(uint16_t* frameData) {
     
     // clear the status register
     err = mlx_i2cWrite(MLX_DEV_ADDR, MLX_STATUS, 1, &clearStatReg);
-    if (err != MLX_SUCCESS) {
+    if (err != 0) {
         return err;
     }
 
     // read the frame data from RAM (pixel data + aux data)
     err = mlx_i2cRead(MLX_DEV_ADDR, MLX_FRAME_ADDR_START, MLX_PIXEL_LEN, frameData);
-    if (err != MLX_SUCCESS) {
+    if (err != 0) {
         return err;
     }
     
     // read the status register
     err = mlx_i2cRead(MLX_DEV_ADDR, MLX_STATUS, 1, &statusReg);
-    if (err != MLX_SUCCESS) {
+    if (err != 0) {
         return err;
     }
 
     // read the controll register
     err = mlx_i2cRead(MLX_DEV_ADDR, MLX_CTRL1, 1, &controlReg);
-    if (err != MLX_SUCCESS) {
+    if (err != 0) {
         return err;
     }
 
@@ -885,4 +870,164 @@ mlx_error mlx_getFrameData(uint16_t* frameData) {
     frameData[833] = (statusReg & BIT(0));
     
     // Validate Aux & Frame data
+    
+    return frameData[833];
 }
+
+/**
+ * Set the Refresh Rate of the MLX90640.
+ * 
+ * @param fps Number of frames per second
+ * 
+ * @return An integer error status
+ */
+int mlx_setRefreshRate(mlx_refresh_rate fps) {
+    // check what the current refresh rate is
+    uint16_t ctrlReg;
+    int err = mlx_getCtrlReg1(&ctrlReg);
+    if (err != 0) { return err; }
+
+    // clear bits 7 - 9 (incl.)
+    ctrlReg &= BIT_MASK(9, 7);
+    
+    // set bits 7 - 9
+    ctrlReg |= LSHIFT((int)fps, 7);
+    
+    // write back to the register
+    err = mlx_i2cWrite(MLX_DEV_ADDR, MLX_CTRL1, 1, &ctrlReg);
+    if (err != 0) { return 0; }
+
+    return 0;
+}
+
+/**
+ * Sets the ADC resolution mode in the MLX90640.
+ * 
+ * @param res ADC resolution option
+ * 
+ * @return An integer error status
+ */
+int mlx_setResolution(mlx_adc_res res) {
+    // check what the current resolution is
+    uint16_t ctrlReg;
+    int err = mlx_getCtrlReg1(&ctrlReg);
+    if (err != 0) { return err; }
+
+    // clear bits 10, 11 (incl.)
+    ctrlReg &= BIT_MASK(11, 10);
+    
+    // set bits 10 - 11
+    ctrlReg |= LSHIFT((int)res, 10);
+    
+    // write back to the register
+    err = mlx_i2cWrite(MLX_DEV_ADDR, MLX_CTRL1, 1, &ctrlReg);
+    if (err != 0) { return 0; }
+
+    return 0;
+}
+
+/**
+ * Setting the data acquisition mode to Chess Mode
+ * 
+ * @return An integer error status
+ */
+int mlx_setChessMode() {
+    // check what the current acquisition mode is
+    uint16_t ctrlReg;
+    int err = mlx_getCtrlReg1(&ctrlReg);
+    if (err != 0) { return err; }
+
+    // return if the bit is set since no change is needed
+    if (RSHIFT(ctrlReg, 12) & 1) { return 0; }
+
+    // set the bit to chess mode
+    ctrlReg |= BIT(12);
+
+    // write back to the register
+    err = mlx_i2cWrite(MLX_DEV_ADDR, MLX_CTRL1, 1, &ctrlReg);
+    if (err != 0) { return err; }
+
+    return 0;
+}
+/**
+ * Setting the data acquisition mode to Interleave Mode
+ * 
+ * @return An integer error status
+ */
+int mlx_setInterleaveMode() {
+    // check what the current acquisition mode is
+    uint16_t ctrlReg;
+    int err = mlx_getCtrlReg1(&ctrlReg);
+    if (err != 0) { return err; }
+
+    // return if the bit is not set since no change is needed
+    if (!(RSHIFT(ctrlReg, 12) & 1)) { return 0; }
+
+    // set the bit to interleave mode
+    ctrlReg |= BIT(12);
+
+    // write back to the register
+    err = mlx_i2cWrite(MLX_DEV_ADDR, MLX_CTRL1, 1, &ctrlReg);
+    if (err != 0) { return err; }
+    
+    return 0;
+}
+
+/**
+ * Calculates the supply voltage value using the calibration & Aux data from RAM
+ * in the MLX90640 Data registers.
+ * 
+ * @param frameData raw data from the captured frame
+ * @param params    Calculated Parameters from EEPROM
+ * 
+ * @return supply voltage value
+ */
+float mlx_getFrameVdd(uint16_t* frameData, const mlx_param* params) {
+    // get aux_data from frame data
+    uint16_t* aux_data = frameData + MLX_TOTAL_PIX;
+
+    // get resolution correlation
+    int adc_res = (frameData[832] >> 10) && 0b11;
+    float res_corr = LSHIFT(1, params->resolutionEE) / (double) (LSHIFT(1, adc_res));
+
+    // read VDD_pix from Frame data
+    int vdd_pix = (aux_data[0x2A] > 32767) ? aux_data[0x2A] - 65536 : aux_data[0x2A];
+
+    // get kVdd & vdd_25
+    float vdd = ((float) ((res_corr * vdd_pix) - (params->vdd25)) / params->kVdd) + 3.3f;
+    return vdd;
+}
+
+/**
+ * Calculates the Ambient Temperature using the calibration & Aux data from RAM
+ * in the MLX90640 Data registers.
+ * 
+ * @param frameData raw data from the captured frame
+ * @param params    Calculated Parameters from EEPROM
+ * 
+ * @return ambient temperature
+ */
+float mlx_getFrameTa(uint16_t* frameData, const mlx_param* params) {
+    // get aux_data from frame data
+    uint16_t* aux_data = frameData + MLX_TOTAL_PIX;
+
+    // get delta V
+    float vdd = mlx_getFrameVdd(frameData, params);
+    
+    // get ptat from frame data
+    float ptat = aux_data[0x20];
+    if (ptat > 32767) { ptat -= 65536; }
+
+    // get ptatArt
+    float ptatArt = aux_data[0x00];
+    if (ptatArt > 32767) { ptatArt -= 65536; }
+
+    ptatArt = (ptat / (ptat * params->alphaPTAT + ptatArt)) * ((double) LSHIFT(1, 18));
+
+    // calculate ambient temperature
+    float ta = (ptatArt / (1 + params->KvPTAT * (vdd - 3.3f)) - params->vPTAT25);
+    ta = ta / params->KtPTAT + 25;
+    
+    return ta;
+}
+
