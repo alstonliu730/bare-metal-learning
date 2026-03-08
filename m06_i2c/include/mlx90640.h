@@ -240,6 +240,8 @@ float mlx_getFrameVdd(uint16_t* frameData, const mlx_param* params);
  * 
  * @param frameData raw data from the captured frame
  * @param params    Calculated Parameters from EEPROM
+ * 
+ * @return ambient temperature
  */
 float mlx_getFrameTa(uint16_t* frameData, const mlx_param* params);
 
