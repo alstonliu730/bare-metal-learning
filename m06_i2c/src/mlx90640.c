@@ -39,6 +39,8 @@ static int ExtractDeviatingPixels(uint16_t* eeData, mlx_param* calibration_data)
 
 static int checkAdjPixel(uint16_t pix1, uint16_t pix2);
 static int checkEEDataValid(uint16_t* eeData);
+static int IsPixelBad(uint16_t pixel, mlx_param* params);
+static float GetMedian(float *values, int n);
 
 /**
  * Initialize the I2C Bus associated for the MLX90640.
@@ -1047,3 +1049,145 @@ float mlx_getFrameTa(uint16_t* frameData, const mlx_param* params) {
     return ta;
 }
 
+/**
+ * Corrects the defective pixels detected from the calibration data by using an interpolation strategy
+ * based on the collection mode:
+ * - Chess pattern (mode 1): Interpolates from diagonal neighbors (row +/- 1, col +/- 1), using the median
+ *   of up to four diagonals for interior pixels.
+ * - Interleaved Pattern (mode 0): Interpolates from horizontal neighbors within the same row.
+ * 
+ * @param pixels    defective pixel indices, terminated by 0xFFFF
+ * @param to        768 pixel output temperature array that needs to be corrected
+ * @param mode      Sensor's operating mode
+ * @param param     Sensor's calibration parameters, extracted from EEPROM
+ */
+void MLX90640_BadPixelsCorrection(uint16_t *pixels, float *to, int mode, mlx_param* params) {   
+    float ap[4];
+    uint8_t pix;
+    uint8_t line;
+    uint8_t column;
+    
+    pix = 0;
+    while(pixels[pix] != 0xFFFF)
+    {
+        line = pixels[pix]>>5;
+        column = pixels[pix] - (line<<5);
+        
+        // Chess Pattern
+        if(mode == 1) {        
+            if(line == 0) {
+                if(column == 0)
+                {        
+                    to[pixels[pix]] = to[33];                    
+                }
+                else if(column == 31)
+                {
+                    to[pixels[pix]] = to[62];                      
+                }
+                else
+                {
+                    to[pixels[pix]] = (to[pixels[pix]+31] + to[pixels[pix]+33])/2.0;                    
+                }        
+            } else if(line == 23) {
+                if(column == 0)
+                {
+                    to[pixels[pix]] = to[705];                    
+                }
+                else if(column == 31)
+                {
+                    to[pixels[pix]] = to[734];                       
+                }
+                else
+                {
+                    to[pixels[pix]] = (to[pixels[pix]-33] + to[pixels[pix]-31])/2.0;                       
+                }                       
+            } else if(column == 0) {
+                to[pixels[pix]] = (to[pixels[pix]-31] + to[pixels[pix]+33])/2.0;                
+            } else if(column == 31) {
+                to[pixels[pix]] = (to[pixels[pix]-33] + to[pixels[pix]+31])/2.0;                
+            } else {
+                ap[0] = to[pixels[pix]-33];
+                ap[1] = to[pixels[pix]-31];
+                ap[2] = to[pixels[pix]+31];
+                ap[3] = to[pixels[pix]+33];
+                to[pixels[pix]] = GetMedian(ap,4);
+            }                   
+        } 
+        // Interleaved Mode
+        else {        
+            if(column == 0) {
+                to[pixels[pix]] = to[pixels[pix]+1];            
+            }
+            else if(column == 1 || column == 30) {
+                to[pixels[pix]] = (to[pixels[pix]-1]+to[pixels[pix]+1])/2.0;                
+            } 
+            else if(column == 31) {
+                to[pixels[pix]] = to[pixels[pix]-1];
+            } 
+            else {
+                if(IsPixelBad(pixels[pix]-2,params) == 0 && IsPixelBad(pixels[pix]+2,params) == 0) {
+                    ap[0] = to[pixels[pix]+1] - to[pixels[pix]+2];
+                    ap[1] = to[pixels[pix]-1] - to[pixels[pix]-2];
+                    if(fabs(ap[0]) > fabs(ap[1])) {
+                        to[pixels[pix]] = to[pixels[pix]-1] + ap[1];                        
+                    } else {
+                        to[pixels[pix]] = to[pixels[pix]+1] + ap[0];                        
+                    }
+                } else {
+                    to[pixels[pix]] = (to[pixels[pix]-1]+to[pixels[pix]+1])/2.0;                    
+                }            
+            }                      
+        } 
+        pix = pix + 1;    
+    }    
+}
+
+/**
+ * Check if the given pixel id is in any of the defective pixels.
+ * 
+ * @param pixel     index of the pixel to test (0 - 767)
+ * @param params    Calibration Parameters from the EEPROM
+ * 
+ * @return '1' if the given pixel is an outlier or broken
+ *         '0' otherwise
+ */
+static int IsPixelBad(uint16_t pixel, mlx_param* params)
+{
+    for(int i=0; i<5; i++) {
+        if(pixel == params->outlierPixels[i] || pixel == params->brokenPixels[i]) {
+            return 1;
+        }    
+    }   
+    
+    return 0;     
+}
+
+/**
+ * Given the number of values and the array, it will first sort the array. 
+ * Afterwards, it finds the median based on the number of items.
+ * 
+ * @param values    Floating value array
+ * @param n         number of elements in the array
+ * 
+ * @return The median value in the array 
+ */
+static float GetMedian(float *values, int n) {
+    float temp;
+
+    for(int i=0; i<n-1; i++) {
+        for(int j=i+1; j<n; j++) {
+            if(values[j] < values[i]) {                
+                temp = values[i];
+                values[i] = values[j];
+                values[j] = temp;
+            }
+        }
+    }
+
+    if(n%2==0) {
+        return ((values[n/2] + values[n/2 - 1]) / 2.0);
+    } else {
+        return values[n/2];
+    }
+
+}  

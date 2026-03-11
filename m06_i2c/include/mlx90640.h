@@ -245,4 +245,18 @@ float mlx_getFrameVdd(uint16_t* frameData, const mlx_param* params);
  */
 float mlx_getFrameTa(uint16_t* frameData, const mlx_param* params);
 
+/**
+ * Corrects the defective pixels detected from the calibration data by using an interpolation strategy
+ * based on the collection mode:
+ * - Chess pattern (mode 1): Interpolates from diagonal neighbors (row +/- 1, col +/- 1), using the median
+ *   of up to four diagonals for interior pixels.
+ * - Interleaved Pattern (mode 0): Interpolates from horizontal neighbors within the same row.
+ * 
+ * @param pixels    defective pixel indices, terminated by 0xFFFF
+ * @param to        768 pixel output temperature array that needs to be corrected
+ * @param mode      Sensor's operating mode
+ * @param param     Sensor's calibration parameters, extracted from EEPROM
+ */
+void MLX90640_BadPixelsCorrection(uint16_t *pixels, float *to, int mode, mlx_param* params);
+
 #endif /* __MLX_90640_H__ */
