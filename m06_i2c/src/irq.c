@@ -25,6 +25,10 @@ void irq_el1h_handler() {
             handle_timer2(); // Timer 2 Interrupt
             break;
         }
+        case I2C_IRQ_ID: {
+            i2c_interrupt_handler(); // I2C Interrupt
+            break;
+        }
         case PL011_UART_IRQ: {
             // OR of all UART IRQ asserts
             uart_handler();

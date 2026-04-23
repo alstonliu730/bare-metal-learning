@@ -38,7 +38,6 @@ typedef struct {
     uint32_t clkt;
 } i2c_reg_t;
 
-
 // Broadcom Serial Controller Addresses
 #define BSC0_ADDR                   (PERIPHERAL_BASE + 0x205000)
 #define BSC1_ADDR                   (PERIPHERAL_BASE + 0x804000)
@@ -48,6 +47,17 @@ typedef struct {
 #define BSC6_ADDR                   (PERIPHERAL_BASE + 0x205c00)
 
 #define I2C_REG(addr)               ((volatile i2c_reg_t *) (addr))
+
+// I2C IRQ Identifiers in PACTL_CS
+#define I2C0_PACTL_BIT              8
+#define I2C1_PACTL_BIT              9
+#define I2C2_PACTL_BIT              10
+#define I2C3_PACTL_BIT              11
+#define I2C4_PACTL_BIT              12
+#define I2C5_PACTL_BIT              13
+#define I2C6_PACTL_BIT              14
+#define I2C7_PACTL_BIT              15
+#define I2C_PACTL_MASK              BIT_MASK(15,8)
 
 // Offset Values
 #define I2C_C_OFFSET                0x00
@@ -60,30 +70,30 @@ typedef struct {
 #define I2C_CLKT_OFFSET             0x1C
 
 // Control Register Mask
-#define C_ENABLE                    BIT(15)
-#define C_DISABLE                   CLR_BIT(15)
-#define C_INTR_EN                   BIT(10)
-#define C_INTR_DE                   CLR_BIT(10)
-#define C_INTT_EN                   BIT(9)
-#define C_INTT_DE                   CLR_BIT(9)
-#define C_INTD_EN                   BIT(8)
-#define C_INTD_DE                   CLR_BIT(8)
-#define C_START                     BIT(7)
-#define C_CLEAR                     BIT_MASK(5,4)
-#define C_READ                      BIT(0)
-#define C_WRITE                     CLR_BIT(0)
+#define I2C_C_ENABLE                    BIT(15)
+#define I2C_C_DISABLE                   CLR_BIT(15)
+#define I2C_C_INTR_EN                   BIT(10)
+#define I2C_C_INTR_DE                   CLR_BIT(10)
+#define I2C_C_INTT_EN                   BIT(9)
+#define I2C_C_INTT_DE                   CLR_BIT(9)
+#define I2C_C_INTD_EN                   BIT(8)
+#define I2C_C_INTD_DE                   CLR_BIT(8)
+#define I2C_C_START                     BIT(7)
+#define I2C_C_CLEAR                     BIT_MASK(5,4)
+#define I2C_C_READ                      BIT(0)
+#define I2C_C_WRITE                     CLR_BIT(0)
 
 // Status Register Mask
-#define S_CLKTOUT                   BIT(9)
-#define S_ERR                       BIT(8)
-#define S_RXF                       BIT(7)
-#define S_TXE                       BIT(6)
-#define S_RXD                       BIT(5)
-#define S_TXD                       BIT(4)
-#define S_RXR                       BIT(3)
-#define S_TXW                       BIT(2)
-#define S_DONE                      BIT(1)
-#define S_TA                        BIT(0)
+#define I2C_S_CLKTOUT                   BIT(9)
+#define I2C_S_ERR                       BIT(8)
+#define I2C_S_RXF                       BIT(7)
+#define I2C_S_TXE                       BIT(6)
+#define I2C_S_RXD                       BIT(5)
+#define I2C_S_TXD                       BIT(4)
+#define I2C_S_RXR                       BIT(3)
+#define I2C_S_TXW                       BIT(2)
+#define I2C_S_DONE                      BIT(1)
+#define I2C_S_TA                        BIT(0)
 
 // Data Length Register Mask
 #define I2C_DLEN                    BIT_MASK(15, 0)
@@ -108,6 +118,7 @@ typedef struct {
 #define DEFAULT_I2C_TIMEOUT         0x40    
 #define WRITE_REG_DLEN              2
 #define MAX_I2C_DEV_ADDR            LSHIFT(1, 7) - 1
+#define I2C_MAX_BUF_LEN             1024 * 2
 
 #define DEFAULT_BEGIN               0x08
 #define DEFAULT_END                 0x77
@@ -177,12 +188,12 @@ void i2c_detect(volatile i2c_reg_t* bus, uint8_t first, uint8_t last);
  * @param dev           device address to the slave drive
  * @param writeBuf      register address in the i2c device
  * @param nWrite        Number of bytes to write
- * @param readBuf           address to the buffer
+ * @param readBuf       address to the buffer
  * @param size          number of bytes per transfer
  * 
  * @return              An i2c status code
  */
-i2c_status i2c_writeReadRepeat(volatile i2c_reg_t* bus, uint8_t dev, 
+i2c_status i2c_transmit_write(volatile i2c_reg_t* bus, uint8_t dev, 
     const void* writeBuf, const uint32_t nWrite, void* readBuf, const uint32_t size);
 
 /**

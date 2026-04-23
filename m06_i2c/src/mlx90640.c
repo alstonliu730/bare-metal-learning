@@ -67,7 +67,7 @@ int mlx_i2cRead(uint8_t dev, uint16_t start, uint16_t nRead, uint16_t *data) {
     // set write buffer as the register address in big endian
     uint8_t reg[2] = { (uint8_t)(start >> 8), (uint8_t)(start & 0xFF) };
     
-    err = i2c_writeReadRepeat(I2C_REG(BSC1_ADDR), dev, (void *)reg, MLX_REG_DLEN, (void *)data, (nRead << 1));
+    err = i2c_transmit_write(I2C_REG(BSC1_ADDR), dev, (void *)reg, MLX_REG_DLEN, (void *)data, (nRead << 1));
 
     // reverse the byte order in each 16-bit word back to little endian
     for(int i = 0; i < nRead; i++) {
@@ -1189,5 +1189,5 @@ static float GetMedian(float *values, int n) {
     } else {
         return values[n/2];
     }
-
 }  
+

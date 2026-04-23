@@ -4,8 +4,8 @@
 #include <common.h>
 #include <stdint.h>
 
-#define PACTL_CS            0xFE204E00
-#define ARMC_BASE           (PERIPHERAL_BASE + 0xB000)
+#define PACTL_CS                0xFE204E00
+#define ARMC_BASE               (PERIPHERAL_BASE + 0xB000)
 
 // IRQ0 Registers (Legacy)
 typedef struct {
@@ -22,20 +22,22 @@ typedef struct {
     volatile uint32_t IRQ0_DISABLE_2;
 } armc_irq0_regs;
 
-#define IRQ0_REGS ((armc_irq0_regs *) (ARMC_BASE + 0x200))
+#define IRQ0_REGS               ((armc_irq0_regs *) (ARMC_BASE + 0x200))
 
-#define IRQ_STATUS0         (ARMC_BASE + 0x230)
-#define IRQ_STATUS1         (ARMC_BASE + 0x234)
-#define IRQ_STATUS2         (ARMC_BASE + 0x238)
+#define IRQ_STATUS0             (ARMC_BASE + 0x230)
+#define IRQ_STATUS1             (ARMC_BASE + 0x234)
+#define IRQ_STATUS2             (ARMC_BASE + 0x238)
 
 // Interrupt IRQ IDs
-#define VC_IRQ_BASE_ID         0x60
-#define SYS_TIMER_IRQ_0     (VC_IRQ_BASE_ID + 0x00)
-#define SYS_TIMER_IRQ_1     (VC_IRQ_BASE_ID + 0x01)
-#define SYS_TIMER_IRQ_2     (VC_IRQ_BASE_ID + 0x02)
-#define SYS_TIMER_IRQ_3     (VC_IRQ_BASE_ID + 0x03)
-
-#define PL011_UART_IRQ      (VC_IRQ_BASE_ID + 0x39)
+#define ARMC_IRQ_BASE_ID        0x40    
+#define VC_IRQ_BASE_ID          0x60
+#define PCIe_IRQ_BASE_ID        0xA0
+#define SYS_TIMER_IRQ_0         (VC_IRQ_BASE_ID + 0x00)
+#define SYS_TIMER_IRQ_1         (VC_IRQ_BASE_ID + 0x01)
+#define SYS_TIMER_IRQ_2         (VC_IRQ_BASE_ID + 0x02)
+#define SYS_TIMER_IRQ_3         (VC_IRQ_BASE_ID + 0x03)
+#define I2C_IRQ_ID              (VC_IRQ_BASE_ID + 0x35)
+#define PL011_UART_IRQ          (VC_IRQ_BASE_ID + 0x39)
 
 // Functions
 void irq_el1h_handler();

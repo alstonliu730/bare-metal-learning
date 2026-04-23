@@ -4,8 +4,14 @@
 #include <timer.h>
 #include <uart.h>
 #include <mb.h>
+#include <irq.h>
 
 #define DETECT_FORMAT       "    0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F\n"
+
+// i2c internal buffer
+static volatile i2c_buffer[I2C_MAX_BUF_LEN];
+static size_t   write_idx = 0;
+static size_t   read_idx = 0;
 
 static inline uint64_t critical_section_enter(void) {
     uint64_t daif;
@@ -89,7 +95,6 @@ void i2c_init(volatile i2c_reg_t* bus, uint8_t sda_pin, uint8_t scl_pin) {
 
     // Clear any previous status
     i2c_reset(bus);
-
     wait_ms(10);
 
     // debugging information
@@ -134,10 +139,10 @@ void i2c_setDevAddr(volatile i2c_reg_t* bus, uint16_t dev, i2c_mode mode) {
  */
 void i2c_reset(volatile i2c_reg_t* bus) {
     // clear the done status
-    bus->status = (S_DONE | S_CLKTOUT | S_ERR);
+    bus->status = (I2C_S_DONE | I2C_S_CLKTOUT | I2C_S_ERR);
 
     // clear the fifo
-    bus->control = (C_ENABLE | C_CLEAR);  
+    bus->control = (I2C_C_ENABLE | I2C_C_CLEAR);  
 }
 
 /**
@@ -161,23 +166,23 @@ i2c_status i2c_ping(volatile i2c_reg_t* bus, uint16_t dev, i2c_mode mode) {
     i2c_setDevAddr(bus, dev, mode);
     
     // start the transfer
-    bus->control = (C_ENABLE | C_START);
+    bus->control = (I2C_C_ENABLE | I2C_C_START);
 
     // wait until done status
     uint32_t timeout = 10000;
-    while (!(bus->status & S_DONE)) {
-        if (bus->status & S_ERR) { return I2C_ACK_ERR; }
+    while (!(bus->status & I2C_S_DONE)) {
+        if (bus->status & I2C_S_ERR) { return I2C_ACK_ERR; }
         if (--timeout == 0) { return I2C_CLK_TIMEOUT; }
         wait_us(1);
     }
 
     // Reset done status
-    bus->status |= S_DONE;
+    bus->status |= I2C_S_DONE;
 
     // Check if the i2c bus timed out
-    if (bus->status & S_CLKTOUT) {
+    if (bus->status & I2C_S_CLKTOUT) {
         return I2C_CLK_TIMEOUT;
-    } else if (bus->status & S_ERR) {
+    } else if (bus->status & I2C_S_ERR) {
         return I2C_ACK_ERR;
     }
     
@@ -245,18 +250,11 @@ void i2c_detect(volatile i2c_reg_t* bus, uint8_t first, uint8_t last) {
 }
 
 /**
- * Polling method for receiving data from the slave drive. Waits until the end of transmission.
+ * @brief Transmit a write buffer to the i2c device then reads data from the i2c device.
  * 
- * @param bus           i2c bus base address
- * @param dev           device address to the slave drive
- * @param writeBuf      register address in the i2c device
- * @param nWrite        Number of bytes to write
- * @param readBuf       address to the buffer
- * @param nRead         umber of bytes to read per transfer
- * 
- * @return              An i2c status code
+ * Usually used for reading register values from the i2c device. 
  */
-i2c_status i2c_writeReadRepeat(volatile i2c_reg_t* bus, uint8_t dev, 
+i2c_status i2c_transmit_write_read(volatile i2c_reg_t* bus, uint8_t dev, 
     const void* writeBuf, const uint32_t nWrite, void* readBuf, const uint32_t nRead) {
     // check for the parameter validity
     if (bus == NULL || dev >= MAX_I2C_DEV_ADDR || nRead == 0 || readBuf == NULL || writeBuf == NULL) {
@@ -267,7 +265,7 @@ i2c_status i2c_writeReadRepeat(volatile i2c_reg_t* bus, uint8_t dev,
     i2c_reset(bus);
 
     // check if the i2c bus is enabled
-    if (!(bus->control & C_ENABLE)) {
+    if (!(bus->control & I2C_C_ENABLE)) {
         return I2C_NOT_ENABLED;
     }
 
@@ -291,20 +289,20 @@ i2c_status i2c_writeReadRepeat(volatile i2c_reg_t* bus, uint8_t dev,
 
     // initiate write transfer
     uint64_t daif = critical_section_enter();
-    bus->control = (C_ENABLE | C_START);
+    bus->control = (I2C_C_ENABLE | I2C_C_START);
     
     // Wait till the xfer starts
-    while(!(bus->status & S_TA));
+    while(!(bus->status & I2C_S_TA));
 
     // ----- Read from the i2c device -----
     // Reset the status
-    bus->status |= (S_DONE | S_ERR | S_CLKTOUT);
+    bus->status |= (I2C_S_DONE | I2C_S_ERR | I2C_S_CLKTOUT);
 
     // write number of data bytes to read to the dlen
     bus->dlen = nRead;
 
     // initiate read transfer (READ = 1, ST = 1)
-    bus->control |= (C_ENABLE | C_START | C_READ);
+    bus->control |= (I2C_C_ENABLE | I2C_C_START | I2C_C_READ);
 
     critical_section_exit(daif);
     wait_us(200);
@@ -316,8 +314,8 @@ i2c_status i2c_writeReadRepeat(volatile i2c_reg_t* bus, uint8_t dev,
     uint8_t *pReadBuf = (uint8_t *) readBuf;
     
     // read from the fifo until done
-    while (!(bus->status & S_DONE)) {
-        while ((bus->status & S_RXD) && count < nRead ) {
+    while (!(bus->status & I2C_S_DONE)) {
+        while ((bus->status & I2C_S_RXD) && count < nRead ) {
             // uint32_t val = mmio_read(BSC1_ADDR + I2C_FIFO_OFFSET);
             uint32_t val = bus->fifo;
             pReadBuf[count++] = (uint8_t) val;
@@ -326,7 +324,7 @@ i2c_status i2c_writeReadRepeat(volatile i2c_reg_t* bus, uint8_t dev,
     }
     
     // Read any remainder data
-    while ((bus->status & S_RXD) && count < nRead) {
+    while ((bus->status & I2C_S_RXD) && count < nRead) {
         // uint32_t val = mmio_read(BSC1_ADDR + I2C_FIFO_OFFSET);
         uint32_t val = bus->fifo;
         pReadBuf[count++] = (uint8_t) val;
@@ -334,14 +332,14 @@ i2c_status i2c_writeReadRepeat(volatile i2c_reg_t* bus, uint8_t dev,
     }
 
     // Reset the done status
-    bus->status |= S_DONE;
+    bus->status |= I2C_S_DONE;
 
     // Check for status
-    if (bus->status & S_ERR) {
-        bus->status = S_ERR; // clear error status
+    if (bus->status & I2C_S_ERR) {
+        bus->status = I2C_S_ERR; // clear error status
         return I2C_ACK_ERR;
-    } else if (bus->status & S_CLKTOUT) {
-        bus->status = S_CLKTOUT;
+    } else if (bus->status & I2C_S_CLKTOUT) {
+        bus->status = I2C_S_CLKTOUT;
         return I2C_CLK_TIMEOUT;
     } else if (count < nRead) {
         return I2C_DATA_LOSS;
@@ -374,7 +372,7 @@ i2c_status i2c_blocking_send(volatile i2c_reg_t* bus, uint8_t dev, const uint32_
     i2c_reset(bus);
 
     // check if the i2c bus is enabled
-    if (!(bus->control & C_ENABLE)) {
+    if (!(bus->control & I2C_C_ENABLE)) {
         return I2C_NOT_ENABLED;
     }
 
@@ -389,41 +387,90 @@ i2c_status i2c_blocking_send(volatile i2c_reg_t* bus, uint8_t dev, const uint32_
     
     // check if the fifo can accept data or when there's no data left
     uint32_t count = 0;
-    while ((bus->status & S_TXD) && count < size) {
+    while ((bus->status & I2C_S_TXD) && count < size) {
         bus->fifo = writeBuf[count++];
     }
     
     uint64_t daif = critical_section_enter();   // critical section start
     // start write transfer
-    bus->control |= (C_ENABLE | C_START);
+    bus->control |= (I2C_C_ENABLE | I2C_C_START);
     critical_section_exit(daif);                // critical section stop
 
     // wait until the Transfer started
-    while (!(bus->status & S_TA));
+    while (!(bus->status & I2C_S_TA));
 
     // check for active transfer and see if there's still data to write to
-    while (!(bus->status & (S_DONE | S_CLKTOUT))) {
+    while (!(bus->status & (I2C_S_DONE | I2C_S_CLKTOUT))) {
         // check if there's still data in the buffer
-        if((bus->status & S_TXD) && count < size) {    
+        if((bus->status & I2C_S_TXD) && count < size) {    
             bus->fifo = writeBuf[count++];
         }
 
         // Return the No Acknowledgement Error 
-        if (bus->status & S_ERR) {
+        if (bus->status & I2C_S_ERR) {
             // clear the fifo and stop writing into the FIFO.
-            bus->control = C_CLEAR;
+            bus->control = I2C_C_CLEAR;
             uart_printf("i2c_blocking_send: ACK Error detected.\n");
             return I2C_ACK_ERR;
         }
     }
 
-    if (bus->status & S_CLKTOUT) {
+    if (bus->status & I2C_S_CLKTOUT) {
         return I2C_CLK_TIMEOUT;
-    } else if (bus->status & S_ERR) {
+    } else if (bus->status & I2C_S_ERR) {
         return I2C_ACK_ERR;
     } else {
         return I2C_SUCCESS;
     }
 }
 
+/**
+ * I2C Interrupt handler responsibilities, assumming the user enabled the bits associated to
+ * the ISR for the i2c (53 in the BMC2711 & Bits 8 - 15 (incl.) of PACTL_CS):
+ * - TXW Interrupt Triggers when FIFO is 1/4 or more empty [FIFO has ~ 4 Bytes of Data]
+ * - RXR Interrupt triggers when FIFO is 3/4 or more full  [FIFO has ~ 12 Bytes of Data]
+ * - Handle DONE condition for the i2c interrupt (DONE status needs to be cleared)
+ */
+void i2c_interrupt_handler(void) {
+    // critical section enter
+    // Check which i2c interrupt was triggered
+    uint32_t i2c_pactl_val = (mmio_read(PACTL_CS) & I2C_PACTL_MASK);
 
+    // change priority mask to i2c priority value
+    // if lower priority irqs are triggered
+
+    // check which i2c peripheral triggered it
+    if (i2c_pactl_val & BIT(I2C0_PACTL_BIT)) { // I2C 0
+        // set the i2c bus
+        volatile i2c_reg_t* i2c0 = I2C_REG(BSC0_ADDR);
+
+        // check which status was triggered
+        uint32_t status = i2c0->status;
+
+        // check if the read interrupt bit is set
+        while (status & I2C_S_RXR) {
+            // read from the fifo
+            uint8_t read_data = (uint8_t) i2c0->fifo;
+            
+            // add it to the queue / internal buffer
+            i2c_buffer[(write_idx + 1) % I2C_MAX_BUF_LEN] = read_data;
+        }
+
+        // check if the transmit interrupt bit is set
+        while (status & I2C_S_TXW) {
+            // write to the fifo
+            i2c0->fifo = i2c_buffer[(read_idx + 1) % I2C_MAX_BUF_LEN];
+        }
+
+        // check if the Done Condition is set
+        if (status & I2C_S_DONE) {
+            // clear the DONE bit
+            i2c0->status |= I2C_S_DONE;
+        }
+
+        // clear the I2C 0 Bit
+        i2c_pactl_val &= ~(BIT(I2C0_PACTL_BIT));
+    }
+
+    // critical section exit
+}

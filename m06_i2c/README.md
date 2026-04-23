@@ -39,3 +39,10 @@ To write on the bus, the master will send a START condition with the slave's add
 #### Read from Slave
 To read from the slave on the i2c bus, the master will send the same two bytes similar to the write format until the third byte. The master would send another START condition with the slave address with the Read/Write bit set to 1 for read. After the slave acknowledges the bit, the slave will write into the SDA line with the data from the device register. After the master needs to acknowledge the bit, the master can send a STOP condition to end the transfer. 
 ![alt text](assets/i2c-read-format.png)
+
+# Testing the I2C
+To test the i2c drivers, we will be using a MLX90640 Thermal Camera to stream onto the frame buffer. To do that, we need to implement the firmware the calculate the temperature. As the array is read from the memory of the sensor, the raspberry pi is responsible to calculate using the given Melexis Datasheet. 
+
+# Resources
+
+# Notes
